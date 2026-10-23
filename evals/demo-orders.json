@@ -1,0 +1,241 @@
+{
+  "menuId": "patty-and-co",
+  "notes": "Sample orders for the Patty & Co. demo menu. Each case pairs what a customer says with the cart the agent should build. 'at' is the order time (UTC); cases without it use 2026-07-15T04:00:00Z, 2pm in Sydney, when breakfast is over. Subtotals are AUD cents.",
+  "orders": [
+    {
+      "id": "o01",
+      "utterance": "Two cheeseburgers, no pickles, a large fries and a medium cola zero",
+      "lines": [
+        { "itemId": "cheeseburger", "qty": 2, "modifiers": { "hold-classic": ["no-pickles"] } },
+        { "itemId": "fries", "modifiers": { "fries-size": ["large"] } },
+        { "itemId": "cola-zero", "modifiers": { "drink-size": ["medium"] } }
+      ],
+      "subtotal": 1850
+    },
+    {
+      "id": "o02",
+      "utterance": "Double Stack meal, large, with a lemonade",
+      "lines": [
+        { "itemId": "double-stack-meal", "modifiers": { "meal-size": ["large"], "meal-drink": ["lemonade"] } }
+      ],
+      "subtotal": 1290
+    },
+    {
+      "id": "o03",
+      "utterance": "10 chicken bites with BBQ and sweet chilli",
+      "lines": [{ "itemId": "chicken-bites-10", "modifiers": { "bites-sauce": ["bbq", "sweet-chilli"] } }],
+      "subtotal": 990
+    },
+    {
+      "id": "o04",
+      "utterance": "Large flat white with oat milk and an extra shot",
+      "lines": [
+        {
+          "itemId": "flat-white",
+          "modifiers": { "coffee-size": ["large"], "coffee-milk": ["oat"], "coffee-extras": ["extra-shot"] }
+        }
+      ],
+      "subtotal": 700
+    },
+    {
+      "id": "o05",
+      "utterance": "Kids pack with a cheeseburger, apple slices and water",
+      "lines": [
+        {
+          "itemId": "kids-pack",
+          "modifiers": { "kids-main": ["cheeseburger"], "kids-side": ["apple-slices"], "kids-drink": ["water"] }
+        }
+      ],
+      "subtotal": 690
+    },
+    {
+      "id": "o06",
+      "utterance": "Spicy chicken burger meal with onion rings and an iced tea",
+      "lines": [
+        {
+          "itemId": "spicy-chicken-burger-meal",
+          "modifiers": { "meal-side": ["onion-rings"], "meal-drink": ["iced-tea"] }
+        }
+      ],
+      "subtotal": 1410
+    },
+    {
+      "id": "o07",
+      "utterance": "Classic burger with extra cheese and bacon",
+      "lines": [{ "itemId": "classic-burger", "modifiers": { "burger-extras": ["extra-cheese", "add-bacon"] } }],
+      "subtotal": 680
+    },
+    {
+      "id": "o08",
+      "utterance": "Three hamburgers and three small fries",
+      "lines": [
+        { "itemId": "classic-burger", "qty": 3 },
+        { "itemId": "fries", "qty": 3, "modifiers": { "fries-size": ["small"] } }
+      ],
+      "subtotal": 2340
+    },
+    {
+      "id": "o09",
+      "utterance": "Caramel sundae and an apple pie",
+      "lines": [
+        { "itemId": "sundae", "modifiers": { "sundae-topping": ["caramel"] } },
+        { "itemId": "apple-turnover" }
+      ],
+      "subtotal": 680
+    },
+    {
+      "id": "o10",
+      "utterance": "Medium chocolate thickshake",
+      "lines": [
+        { "itemId": "thickshake", "modifiers": { "shake-flavour": ["chocolate"], "shake-size": ["medium"] } }
+      ],
+      "subtotal": 570
+    },
+    {
+      "id": "o11",
+      "utterance": "Big Cheese Deluxe with no onion and no pickles, and a water",
+      "lines": [
+        { "itemId": "big-cheese-deluxe", "modifiers": { "hold-deluxe": ["no-onion", "no-pickles"] } },
+        { "itemId": "water" }
+      ],
+      "subtotal": 1190
+    },
+    {
+      "id": "o12",
+      "utterance": "20 chicken bites to share with BBQ, ranch and garlic aioli",
+      "lines": [{ "itemId": "chicken-bites-20", "modifiers": { "bites-sauce-share": ["bbq", "ranch", "aioli"] } }],
+      "subtotal": 1690
+    },
+    {
+      "id": "o13",
+      "utterance": "Crispy chicken burger, no mayo, add cheese",
+      "lines": [
+        {
+          "itemId": "crispy-chicken-burger",
+          "modifiers": { "hold-chicken": ["no-mayo"], "chicken-extras": ["add-cheese"] }
+        }
+      ],
+      "subtotal": 930
+    },
+    {
+      "id": "o14",
+      "utterance": "Two Crunch Swirls with cookie crumble",
+      "lines": [{ "itemId": "crunch-swirl", "qty": 2, "modifiers": { "swirl-mixin": ["cookie-crumble"] } }],
+      "subtotal": 1120
+    },
+    {
+      "id": "o15",
+      "utterance": "Garden veggie burger meal with a side salad and orange juice",
+      "lines": [
+        {
+          "itemId": "garden-veggie-burger-meal",
+          "modifiers": { "meal-side": ["side-salad"], "meal-drink": ["orange-juice"] }
+        }
+      ],
+      "subtotal": 1320
+    },
+    {
+      "id": "o16",
+      "utterance": "Chicken wrap and a large cola",
+      "lines": [
+        { "itemId": "chicken-wrap" },
+        { "itemId": "cola", "modifiers": { "drink-size": ["large"] } }
+      ],
+      "subtotal": 1120
+    },
+    {
+      "id": "o17",
+      "utterance": "Cappuccino with skim milk and a hot chocolate with soy",
+      "lines": [
+        { "itemId": "cappuccino", "modifiers": { "coffee-milk": ["skim"] } },
+        { "itemId": "hot-chocolate", "modifiers": { "coffee-milk": ["soy"] } }
+      ],
+      "subtotal": 970
+    },
+    {
+      "id": "o18",
+      "utterance": "Two Smoky Bacon Deluxe meals, both large, one with a cola and one with a chocolate thickshake",
+      "lines": [
+        { "itemId": "smoky-bacon-deluxe-meal", "modifiers": { "meal-size": ["large"], "meal-drink": ["cola"] } },
+        { "itemId": "smoky-bacon-deluxe-meal", "modifiers": { "meal-size": ["large"], "meal-drink": ["choc-shake"] } }
+      ],
+      "subtotal": 3130
+    },
+    {
+      "id": "o19",
+      "utterance": "Six nuggets with sweet and sour and two soft serve cones",
+      "lines": [
+        { "itemId": "chicken-bites-6", "modifiers": { "bites-sauce": ["sweet-sour"] } },
+        { "itemId": "soft-serve-cone", "qty": 2 }
+      ],
+      "subtotal": 990
+    },
+    {
+      "id": "o20",
+      "utterance": "Double cheeseburger meal, no pickles, with fries and a cola zero",
+      "lines": [
+        {
+          "itemId": "double-cheeseburger-meal",
+          "modifiers": { "hold-classic": ["no-pickles"], "meal-drink": ["cola-zero"] }
+        }
+      ],
+      "subtotal": 1090
+    },
+    {
+      "id": "o21",
+      "utterance": "Bacon and egg muffin and a hash brown",
+      "at": "2026-07-15T00:00:00Z",
+      "lines": [{ "itemId": "bacon-egg-muffin" }, { "itemId": "hash-brown" }],
+      "subtotal": 900
+    },
+    {
+      "id": "o22",
+      "utterance": "Hotcakes with extra syrup and a long black",
+      "at": "2026-07-15T00:00:00Z",
+      "lines": [
+        { "itemId": "hotcakes", "modifiers": { "hotcakes-extras": ["extra-syrup"] } },
+        { "itemId": "long-black" }
+      ],
+      "subtotal": 1060
+    }
+  ],
+  "clarifications": [
+    {
+      "id": "c01",
+      "utterance": "A sundae",
+      "attempt": { "itemId": "sundae" },
+      "expectError": { "code": "missing_choice", "groupId": "sundae-topping" }
+    },
+    {
+      "id": "c02",
+      "utterance": "Cheeseburger meal",
+      "attempt": { "itemId": "cheeseburger-meal" },
+      "expectError": { "code": "missing_choice", "groupId": "meal-drink" }
+    },
+    {
+      "id": "c03",
+      "utterance": "Kids pack please",
+      "attempt": { "itemId": "kids-pack" },
+      "expectError": { "code": "missing_choice", "groupId": "kids-main" }
+    },
+    {
+      "id": "c04",
+      "utterance": "6 chicken bites",
+      "attempt": { "itemId": "chicken-bites-6" },
+      "expectError": { "code": "missing_choice", "groupId": "bites-sauce" }
+    },
+    {
+      "id": "c05",
+      "utterance": "A thickshake",
+      "attempt": { "itemId": "thickshake" },
+      "expectError": { "code": "missing_choice", "groupId": "shake-flavour" }
+    },
+    {
+      "id": "c06",
+      "utterance": "Bacon and egg muffin",
+      "at": "2026-07-15T04:00:00Z",
+      "attempt": { "itemId": "bacon-egg-muffin" },
+      "expectError": { "code": "unavailable_now" }
+    }
+  ]
+}

@@ -7,8 +7,12 @@
     "node": ">=22"
   },
   "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"pnpm --filter @foa/server dev\" \"pnpm --filter @foa/web dev\"",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "menu": "pnpm --filter @foa/core menu"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
   }
 }

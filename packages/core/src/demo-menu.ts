@@ -1,0 +1,613 @@
+import { Menu, type MenuInput } from "./schema";
+
+/*
+ * Patty & Co. is a fictional burger shop used for demos and tests.
+ * It follows a typical quick-service menu layout, but every name is original.
+ * Prices (AUD cents) and allergens are made up and are not real nutrition data.
+ */
+
+type Option = { id: string; name: string; priceDelta?: number; default?: boolean };
+const option = (id: string, name: string, priceDelta = 0, isDefault = false): Option => ({
+  id,
+  name,
+  priceDelta,
+  default: isDefault,
+});
+
+const sauces = [
+  option("bbq", "BBQ"),
+  option("sweet-sour", "Sweet & sour"),
+  option("sweet-chilli", "Sweet chilli"),
+  option("honey-mustard", "Honey mustard"),
+  option("ranch", "Ranch"),
+  option("aioli", "Garlic aioli"),
+];
+
+const modifierGroups: MenuInput["modifierGroups"] = [
+  {
+    id: "hold-classic",
+    name: "Leave off",
+    min: 0,
+    max: 4,
+    options: [
+      option("no-pickles", "No pickles"),
+      option("no-onion", "No onion"),
+      option("no-ketchup", "No ketchup"),
+      option("no-mustard", "No mustard"),
+    ],
+  },
+  {
+    id: "hold-deluxe",
+    name: "Leave off",
+    min: 0,
+    max: 6,
+    options: [
+      option("no-lettuce", "No lettuce"),
+      option("no-tomato", "No tomato"),
+      option("no-onion", "No onion"),
+      option("no-pickles", "No pickles"),
+      option("no-cheese", "No cheese"),
+      option("no-sauce", "No sauce"),
+    ],
+  },
+  {
+    id: "hold-chicken",
+    name: "Leave off",
+    min: 0,
+    max: 3,
+    options: [option("no-lettuce", "No lettuce"), option("no-mayo", "No mayo"), option("no-tomato", "No tomato")],
+  },
+  {
+    id: "burger-extras",
+    name: "Extras",
+    min: 0,
+    max: 3,
+    options: [
+      option("extra-cheese", "Extra cheese", 80),
+      option("add-bacon", "Add bacon", 150),
+      option("extra-patty", "Extra patty", 250),
+    ],
+  },
+  {
+    id: "chicken-extras",
+    name: "Extras",
+    min: 0,
+    max: 2,
+    options: [option("add-cheese", "Add cheese", 80), option("add-bacon", "Add bacon", 150)],
+  },
+  {
+    id: "fries-size",
+    name: "Size",
+    min: 1,
+    max: 1,
+    options: [option("small", "Small"), option("medium", "Medium", 100, true), option("large", "Large", 170)],
+  },
+  {
+    id: "drink-size",
+    name: "Size",
+    min: 1,
+    max: 1,
+    options: [option("small", "Small"), option("medium", "Medium", 60, true), option("large", "Large", 110)],
+  },
+  {
+    id: "coffee-size",
+    name: "Size",
+    min: 1,
+    max: 1,
+    options: [option("small", "Small", 0, true), option("medium", "Medium", 50), option("large", "Large", 100)],
+  },
+  {
+    id: "coffee-milk",
+    name: "Milk",
+    min: 1,
+    max: 1,
+    options: [
+      option("full-cream", "Full cream", 0, true),
+      option("skim", "Skim"),
+      option("oat", "Oat", 70),
+      option("soy", "Soy", 70),
+      option("almond", "Almond", 70),
+    ],
+  },
+  {
+    id: "coffee-extras",
+    name: "Extras",
+    min: 0,
+    max: 4,
+    options: [
+      option("extra-shot", "Extra shot", 80),
+      option("vanilla-syrup", "Vanilla syrup", 70),
+      option("caramel-syrup", "Caramel syrup", 70),
+      option("sugar", "Sugar"),
+    ],
+  },
+  {
+    id: "shake-size",
+    name: "Size",
+    min: 1,
+    max: 1,
+    options: [option("small", "Small"), option("medium", "Medium", 80, true), option("large", "Large", 150)],
+  },
+  {
+    id: "shake-flavour",
+    name: "Flavour",
+    min: 1,
+    max: 1,
+    options: [
+      option("chocolate", "Chocolate"),
+      option("vanilla", "Vanilla"),
+      option("strawberry", "Strawberry"),
+      option("caramel", "Caramel"),
+    ],
+  },
+  { id: "bites-sauce", name: "Dipping sauce (pick 1–2)", min: 1, max: 2, options: sauces },
+  { id: "bites-sauce-share", name: "Dipping sauces (pick 2–4)", min: 2, max: 4, options: sauces },
+  {
+    id: "sundae-topping",
+    name: "Topping",
+    min: 1,
+    max: 1,
+    options: [option("caramel", "Caramel"), option("hot-fudge", "Hot fudge"), option("strawberry", "Strawberry")],
+  },
+  {
+    id: "swirl-mixin",
+    name: "Mix-in",
+    min: 1,
+    max: 1,
+    options: [
+      option("cookie-crumble", "Cookie crumble"),
+      option("choc-pieces", "Chocolate pieces"),
+      option("caramel-crunch", "Caramel crunch"),
+    ],
+  },
+  {
+    id: "meal-size",
+    name: "Meal size",
+    min: 1,
+    max: 1,
+    options: [option("medium", "Medium meal", 0, true), option("large", "Large meal", 100)],
+  },
+  {
+    id: "meal-side",
+    name: "Meal side",
+    min: 1,
+    max: 1,
+    options: [
+      option("fries", "Fries", 0, true),
+      option("side-salad", "Side salad", 50),
+      option("onion-rings", "Onion rings", 120),
+    ],
+  },
+  {
+    // No default on purpose: kiosks ask for the drink, so the agent must too.
+    id: "meal-drink",
+    name: "Meal drink",
+    min: 1,
+    max: 1,
+    options: [
+      option("cola", "Cola"),
+      option("cola-zero", "Cola Zero"),
+      option("lemonade", "Lemonade"),
+      option("orange-soda", "Orange soda"),
+      option("iced-tea", "Iced tea"),
+      option("water", "Water"),
+      option("orange-juice", "Orange juice", 50),
+      option("choc-shake", "Chocolate thickshake", 150),
+      option("vanilla-shake", "Vanilla thickshake", 150),
+      option("strawberry-shake", "Strawberry thickshake", 150),
+    ],
+  },
+  {
+    id: "kids-main",
+    name: "Kids main",
+    min: 1,
+    max: 1,
+    options: [option("cheeseburger", "Cheeseburger"), option("bites-3", "3 chicken bites")],
+  },
+  {
+    id: "kids-side",
+    name: "Kids side",
+    min: 1,
+    max: 1,
+    options: [option("small-fries", "Small fries", 0, true), option("apple-slices", "Apple slices")],
+  },
+  {
+    id: "kids-drink",
+    name: "Kids drink",
+    min: 1,
+    max: 1,
+    options: [option("water", "Water"), option("apple-juice", "Apple juice"), option("milk", "Milk")],
+  },
+  {
+    id: "breakfast-hold",
+    name: "Leave off",
+    min: 0,
+    max: 2,
+    options: [option("no-cheese", "No cheese"), option("no-butter", "No butter")],
+  },
+  {
+    id: "hotcakes-extras",
+    name: "Extras",
+    min: 0,
+    max: 2,
+    options: [option("extra-syrup", "Extra syrup", 50), option("extra-butter", "Extra butter")],
+  },
+];
+
+type Item = MenuInput["items"][number];
+
+const BREAKFAST = { start: "05:00", end: "10:30" };
+const BUN = ["gluten", "sesame"];
+
+const items: Item[] = [
+  // Burgers
+  {
+    id: "classic-burger",
+    name: "Classic Burger",
+    aliases: ["hamburger", "plain burger", "burger"],
+    description: "Beef patty, pickles, onion, ketchup and mustard.",
+    categoryId: "burgers",
+    price: 450,
+    allergens: [...BUN, "mustard"],
+    modifierGroupIds: ["hold-classic", "burger-extras"],
+  },
+  {
+    id: "cheeseburger",
+    name: "Cheeseburger",
+    aliases: ["cheese burger"],
+    description: "Beef patty, cheese, pickles, onion, ketchup and mustard.",
+    categoryId: "burgers",
+    price: 520,
+    allergens: [...BUN, "milk", "mustard"],
+    modifierGroupIds: ["hold-classic", "burger-extras"],
+  },
+  {
+    id: "double-cheeseburger",
+    name: "Double Cheeseburger",
+    aliases: ["double cheese burger", "double cheese"],
+    description: "Two beef patties, two slices of cheese, pickles, onion, ketchup and mustard.",
+    categoryId: "burgers",
+    price: 690,
+    allergens: [...BUN, "milk", "mustard"],
+    modifierGroupIds: ["hold-classic", "burger-extras"],
+  },
+  {
+    id: "double-stack",
+    name: "Double Stack",
+    aliases: ["double stacker", "stack burger", "stack"],
+    description: "Two beef patties, three-layer bun, shredded lettuce, cheese, pickles, onion and stack sauce.",
+    categoryId: "burgers",
+    price: 790,
+    allergens: [...BUN, "milk", "egg", "mustard"],
+    modifierGroupIds: ["hold-deluxe", "burger-extras"],
+  },
+  {
+    id: "big-cheese-deluxe",
+    name: "Big Cheese Deluxe",
+    aliases: ["big cheese", "quarter pound burger", "quarter pound cheeseburger"],
+    description: "Quarter-pound beef patty, two slices of cheese, lettuce, tomato, onion, pickles and sauce.",
+    categoryId: "burgers",
+    price: 890,
+    allergens: [...BUN, "milk", "egg", "mustard"],
+    modifierGroupIds: ["hold-deluxe", "burger-extras"],
+  },
+  {
+    id: "smoky-bacon-deluxe",
+    name: "Smoky Bacon Deluxe",
+    aliases: ["bacon deluxe", "bacon burger", "smoky bacon"],
+    description: "Quarter-pound beef patty, bacon, cheese, lettuce, tomato, onion and smoky sauce.",
+    categoryId: "burgers",
+    price: 990,
+    allergens: [...BUN, "milk", "egg"],
+    modifierGroupIds: ["hold-deluxe", "burger-extras"],
+  },
+  {
+    id: "garden-veggie-burger",
+    name: "Garden Veggie Burger",
+    aliases: ["veggie burger", "vegetarian burger", "veggie"],
+    description: "Vegetable patty, cheese, lettuce, tomato, onion, pickles and sauce.",
+    categoryId: "burgers",
+    price: 820,
+    tags: ["vegetarian"],
+    allergens: [...BUN, "milk", "egg", "soy"],
+    modifierGroupIds: ["hold-deluxe"],
+  },
+
+  // Chicken
+  {
+    id: "crispy-chicken-burger",
+    name: "Crispy Chicken Burger",
+    aliases: ["chicken burger", "crispy chicken"],
+    description: "Crispy chicken fillet, lettuce, tomato and mayo.",
+    categoryId: "chicken",
+    price: 850,
+    allergens: [...BUN, "egg"],
+    modifierGroupIds: ["hold-chicken", "chicken-extras"],
+  },
+  {
+    id: "spicy-chicken-burger",
+    name: "Spicy Chicken Burger",
+    aliases: ["spicy chicken", "hot chicken burger"],
+    description: "Spicy crispy chicken fillet, lettuce, tomato and chilli mayo.",
+    categoryId: "chicken",
+    price: 890,
+    tags: ["spicy"],
+    allergens: [...BUN, "egg"],
+    modifierGroupIds: ["hold-chicken", "chicken-extras"],
+  },
+  {
+    id: "chicken-wrap",
+    name: "Chicken Wrap",
+    aliases: ["wrap", "crispy chicken wrap"],
+    description: "Crispy chicken, lettuce, tomato and mayo in a soft tortilla.",
+    categoryId: "chicken",
+    price: 760,
+    allergens: ["gluten", "egg"],
+    modifierGroupIds: ["hold-chicken"],
+  },
+  {
+    id: "chicken-bites-6",
+    name: "6 Chicken Bites",
+    aliases: ["6 nuggets", "six nuggets", "nuggets", "chicken nuggets", "6 bites", "chicken bites"],
+    description: "Six crumbed chicken bites with dipping sauce.",
+    categoryId: "chicken",
+    price: 690,
+    allergens: ["gluten"],
+    modifierGroupIds: ["bites-sauce"],
+  },
+  {
+    id: "chicken-bites-10",
+    name: "10 Chicken Bites",
+    aliases: ["10 nuggets", "ten nuggets", "10 bites", "10 chicken bites", "ten chicken bites"],
+    description: "Ten crumbed chicken bites with dipping sauce.",
+    categoryId: "chicken",
+    price: 990,
+    allergens: ["gluten"],
+    modifierGroupIds: ["bites-sauce"],
+  },
+  {
+    id: "chicken-bites-20",
+    name: "20 Chicken Bites Share Box",
+    aliases: ["20 nuggets", "twenty nuggets", "20 bites", "20 chicken bites", "share box"],
+    description: "Twenty crumbed chicken bites with dipping sauces, for sharing.",
+    categoryId: "chicken",
+    price: 1690,
+    allergens: ["gluten"],
+    modifierGroupIds: ["bites-sauce-share"],
+  },
+
+  // Sides
+  {
+    id: "fries",
+    name: "Fries",
+    aliases: ["chips", "french fries", "hot chips"],
+    categoryId: "sides",
+    price: 330,
+    tags: ["vegetarian"],
+    modifierGroupIds: ["fries-size"],
+  },
+  {
+    id: "onion-rings",
+    name: "Onion Rings",
+    aliases: ["rings"],
+    categoryId: "sides",
+    price: 450,
+    tags: ["vegetarian"],
+    allergens: ["gluten"],
+  },
+  { id: "side-salad", name: "Side Salad", aliases: ["salad"], categoryId: "sides", price: 450, tags: ["vegetarian", "vegan"] },
+  { id: "apple-slices", name: "Apple Slices", aliases: ["apple", "apples"], categoryId: "sides", price: 250, tags: ["vegan"] },
+
+  // Drinks
+  { id: "cola", name: "Cola", aliases: ["soft drink", "soda"], categoryId: "drinks", price: 250, modifierGroupIds: ["drink-size"] },
+  {
+    id: "cola-zero",
+    name: "Cola Zero",
+    aliases: ["diet cola", "zero sugar cola", "sugar free cola"],
+    categoryId: "drinks",
+    price: 250,
+    modifierGroupIds: ["drink-size"],
+  },
+  { id: "lemonade", name: "Lemonade", aliases: ["lemon soda"], categoryId: "drinks", price: 250, modifierGroupIds: ["drink-size"] },
+  { id: "orange-soda", name: "Orange Soda", aliases: ["orange fizz"], categoryId: "drinks", price: 250, modifierGroupIds: ["drink-size"] },
+  { id: "iced-tea", name: "Iced Tea", aliases: ["ice tea", "peach iced tea"], categoryId: "drinks", price: 290, modifierGroupIds: ["drink-size"] },
+  { id: "orange-juice", name: "Orange Juice", aliases: ["oj", "juice"], categoryId: "drinks", price: 380 },
+  { id: "water", name: "Bottled Water", aliases: ["water"], categoryId: "drinks", price: 300 },
+  {
+    id: "thickshake",
+    name: "Thickshake",
+    aliases: ["shake", "milkshake", "thick shake"],
+    categoryId: "drinks",
+    price: 490,
+    allergens: ["milk"],
+    modifierGroupIds: ["shake-flavour", "shake-size"],
+  },
+
+  // Coffee
+  {
+    id: "flat-white",
+    name: "Flat White",
+    categoryId: "coffee",
+    price: 450,
+    allergens: ["milk"],
+    modifierGroupIds: ["coffee-size", "coffee-milk", "coffee-extras"],
+  },
+  {
+    id: "cappuccino",
+    name: "Cappuccino",
+    aliases: ["cappa", "cap"],
+    categoryId: "coffee",
+    price: 450,
+    allergens: ["milk"],
+    modifierGroupIds: ["coffee-size", "coffee-milk", "coffee-extras"],
+  },
+  {
+    id: "latte",
+    name: "Latte",
+    aliases: ["cafe latte"],
+    categoryId: "coffee",
+    price: 450,
+    allergens: ["milk"],
+    modifierGroupIds: ["coffee-size", "coffee-milk", "coffee-extras"],
+  },
+  {
+    id: "long-black",
+    name: "Long Black",
+    aliases: ["black coffee", "americano"],
+    categoryId: "coffee",
+    price: 420,
+    tags: ["vegan"],
+    modifierGroupIds: ["coffee-size", "coffee-extras"],
+  },
+  {
+    id: "hot-chocolate",
+    name: "Hot Chocolate",
+    aliases: ["hot choc", "hot cocoa"],
+    categoryId: "coffee",
+    price: 450,
+    allergens: ["milk"],
+    modifierGroupIds: ["coffee-size", "coffee-milk"],
+  },
+
+  // Desserts
+  {
+    id: "soft-serve-cone",
+    name: "Soft Serve Cone",
+    aliases: ["cone", "ice cream cone", "soft serve", "ice cream"],
+    categoryId: "desserts",
+    price: 150,
+    allergens: ["milk", "gluten"],
+  },
+  {
+    id: "sundae",
+    name: "Swirl Sundae",
+    aliases: ["sundae", "ice cream sundae"],
+    categoryId: "desserts",
+    price: 390,
+    allergens: ["milk"],
+    modifierGroupIds: ["sundae-topping"],
+  },
+  {
+    id: "crunch-swirl",
+    name: "Crunch Swirl",
+    aliases: ["swirl", "crunch swirl", "soft serve with cookies"],
+    categoryId: "desserts",
+    price: 560,
+    allergens: ["milk", "gluten", "soy"],
+    modifierGroupIds: ["swirl-mixin"],
+  },
+  {
+    id: "apple-turnover",
+    name: "Baked Apple Turnover",
+    aliases: ["apple pie", "pie", "apple turnover", "turnover"],
+    categoryId: "desserts",
+    price: 290,
+    allergens: ["gluten"],
+  },
+
+  // Kids
+  {
+    id: "kids-pack",
+    name: "Kids Pack",
+    aliases: ["kids meal", "children's meal", "kids box"],
+    description: "A small main, a side and a drink.",
+    categoryId: "kids",
+    price: 690,
+    allergens: [...BUN, "milk"],
+    modifierGroupIds: ["kids-main", "kids-side", "kids-drink"],
+  },
+
+  // Breakfast (05:00–10:30)
+  {
+    id: "egg-cheese-muffin",
+    name: "Egg & Cheese Muffin",
+    aliases: ["egg muffin", "egg and cheese muffin", "breakfast muffin"],
+    categoryId: "breakfast",
+    price: 520,
+    allergens: ["gluten", "egg", "milk"],
+    modifierGroupIds: ["breakfast-hold"],
+    availability: BREAKFAST,
+  },
+  {
+    id: "bacon-egg-muffin",
+    name: "Bacon & Egg Muffin",
+    aliases: ["bacon and egg muffin", "bacon muffin", "bacon egg muffin"],
+    categoryId: "breakfast",
+    price: 650,
+    allergens: ["gluten", "egg", "milk"],
+    modifierGroupIds: ["breakfast-hold"],
+    availability: BREAKFAST,
+  },
+  {
+    id: "hotcakes",
+    name: "Hotcakes (3)",
+    aliases: ["hotcakes", "pancakes", "hot cakes"],
+    categoryId: "breakfast",
+    price: 590,
+    allergens: ["gluten", "egg", "milk"],
+    modifierGroupIds: ["hotcakes-extras"],
+    availability: BREAKFAST,
+  },
+  {
+    id: "hash-brown",
+    name: "Hash Brown",
+    aliases: ["hashbrown", "hash browns"],
+    categoryId: "breakfast",
+    price: 250,
+    tags: ["vegetarian"],
+    availability: BREAKFAST,
+  },
+];
+
+// Meals: the main item + side + drink, $4.00 more than the item on its own.
+const MEAL_UPCHARGE = 400;
+const mealBases = [
+  "cheeseburger",
+  "double-cheeseburger",
+  "double-stack",
+  "big-cheese-deluxe",
+  "smoky-bacon-deluxe",
+  "garden-veggie-burger",
+  "crispy-chicken-burger",
+  "spicy-chicken-burger",
+  "chicken-wrap",
+  "chicken-bites-10",
+];
+
+const meals: Item[] = mealBases.map((baseId) => {
+  const base = items.find((item) => item.id === baseId);
+  if (!base) throw new Error(`meal base "${baseId}" not found`);
+  return {
+    id: `${base.id}-meal`,
+    name: `${base.name} Meal`,
+    aliases: [`${base.name} combo`, ...(base.aliases ?? []).map((alias) => `${alias} meal`)],
+    description: `${base.name} with a side and a drink.`,
+    categoryId: "meals",
+    price: base.price + MEAL_UPCHARGE,
+    tags: base.tags,
+    allergens: base.allergens,
+    modifierGroupIds: [...(base.modifierGroupIds ?? []), "meal-size", "meal-side", "meal-drink"],
+  };
+});
+
+export const demoMenuInput: MenuInput = {
+  id: "patty-and-co",
+  name: "Patty & Co. (demo)",
+  currency: "AUD",
+  timezone: "Australia/Sydney",
+  categories: [
+    { id: "meals", name: "Meals" },
+    { id: "burgers", name: "Burgers" },
+    { id: "chicken", name: "Chicken" },
+    { id: "sides", name: "Sides" },
+    { id: "drinks", name: "Drinks" },
+    { id: "coffee", name: "Coffee" },
+    { id: "desserts", name: "Desserts" },
+    { id: "kids", name: "Kids" },
+    { id: "breakfast", name: "Breakfast" },
+  ],
+  modifierGroups,
+  items: [...meals, ...items],
+};
+
+export const demoMenu: Menu = Menu.parse(demoMenuInput);

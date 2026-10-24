@@ -1,0 +1,29 @@
+{
+  "name": "@foa/agent",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "eval": "tsx scripts/run-evals.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.87",
+    "@ai-sdk/openai": "^4.0.101",
+    "@foa/core": "workspace:*",
+    "@openrouter/ai-sdk-provider": "^3.1.0",
+    "ai": "^7.0.150",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

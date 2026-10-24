@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 
@@ -8,13 +8,44 @@ export interface Db {
   close(): Promise<void>;
 }
 
+export interface PostgresOptions {
+  url: string;
+  /** PEM file with the server's CA certificate (Supabase: Database settings → SSL → download). Verifies the connection. */
+  caFile?: string;
+  /** Pool size; keep it small on hosted plans with connection limits. */
+  poolMax?: number;
+}
+
+/** Pool settings for a Postgres server such as Supabase. */
+export function postgresConfig(options: PostgresOptions): pg.PoolConfig {
+  const config: pg.PoolConfig = { connectionString: options.url, max: options.poolMax ?? 5 };
+  if (options.caFile) {
+    // An explicit `ssl` object replaces any sslmode in the URL, so drop it to avoid a conflict.
+    const url = new URL(options.url);
+    url.searchParams.delete("sslmode");
+    config.connectionString = url.toString();
+    config.ssl = { ca: readFileSync(options.caFile, "utf8"), rejectUnauthorized: true };
+  }
+  return config;
+}
+
+export function postgresOptionsFromEnv(env: Record<string, string | undefined> = process.env): PostgresOptions | null {
+  if (!env.DATABASE_URL) return null;
+  const poolMax = Number(env.DATABASE_POOL_MAX);
+  return {
+    url: env.DATABASE_URL,
+    caFile: env.DATABASE_SSL_CA || undefined,
+    poolMax: Number.isInteger(poolMax) && poolMax > 0 ? poolMax : undefined,
+  };
+}
+
 /**
- * DATABASE_URL set → that Postgres server.
+ * Postgres options given (DATABASE_URL, e.g. Supabase) → that server.
  * Otherwise → embedded Postgres (PGlite) stored in `dataDir`, or in memory for tests.
  */
-export async function openDb(options: { databaseUrl?: string; dataDir?: string }): Promise<Db> {
-  if (options.databaseUrl) {
-    const pool = new pg.Pool({ connectionString: options.databaseUrl });
+export async function openDb(options: { postgres?: PostgresOptions | null; dataDir?: string }): Promise<Db> {
+  if (options.postgres) {
+    const pool = new pg.Pool(postgresConfig(options.postgres));
     return {
       query: async (sql, params) => (await pool.query(sql, params)).rows,
       close: () => pool.end(),
@@ -52,6 +83,11 @@ export async function migrate(db: Db): Promise<void> {
     )`,
     `CREATE INDEX IF NOT EXISTS orders_status_idx ON orders (status, created_at)`,
     `CREATE INDEX IF NOT EXISTS orders_pickup_code_idx ON orders (pickup_code)`,
+    // Supabase serves the public schema over its REST API. Row-level security with no policies
+    // closes that door; this server connects as the table owner, which RLS doesn't restrict.
+    `ALTER TABLE settings ENABLE ROW LEVEL SECURITY`,
+    `ALTER TABLE sessions ENABLE ROW LEVEL SECURITY`,
+    `ALTER TABLE orders ENABLE ROW LEVEL SECURITY`,
   ];
   for (const sql of statements) await db.query(sql);
 }

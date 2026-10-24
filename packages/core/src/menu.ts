@@ -46,6 +46,17 @@ export function validateMenu(menu: Menu): string[] {
       optionIds.add(option.id);
     }
 
+    const said = new Map<string, string>();
+    for (const option of group.options) {
+      for (const phrase of [option.name, ...option.aliases]) {
+        const key = phrase.trim().toLowerCase();
+        const other = said.get(key);
+        if (other && other !== option.id) problems.push(`group "${group.id}": "${phrase}" names both "${other}" and "${option.id}"`);
+        said.set(key, option.id);
+      }
+    }
+    if (group.offer && group.min > 0) problems.push(`group "${group.id}": only optional groups (min 0) can be offered`);
+
     const defaults = group.options.filter((o) => o.default).length;
     if (defaults > group.max) problems.push(`group "${group.id}": ${defaults} defaults > max ${group.max}`);
   }
@@ -59,6 +70,9 @@ export function validateMenu(menu: Menu): string[] {
     }
     for (const groupId of item.modifierGroupIds) {
       if (!groupIds.has(groupId)) problems.push(`item "${item.id}": unknown modifier group "${groupId}"`);
+    }
+    if (item.mealItemId && (item.mealItemId === item.id || !menu.items.some((i) => i.id === item.mealItemId))) {
+      problems.push(`item "${item.id}": unknown meal item "${item.mealItemId}"`);
     }
     if (item.availability && item.availability.start >= item.availability.end) {
       problems.push(`item "${item.id}": availability start must be before end`);

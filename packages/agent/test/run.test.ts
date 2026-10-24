@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { MockLanguageModelV4 } from "ai/test";
+import { MockLanguageModelV4, convertArrayToReadableStream } from "ai/test";
 import { defaultQuestions, demoMenu, questionsFor } from "@foa/core";
-import { newOrderState, runAgent, type RunAgentInput } from "../src";
+import { newOrderState, runAgent, staticInstructions, type ReplyEvent, type RunAgentInput } from "../src";
 
 const usage = {
   inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
@@ -39,10 +39,11 @@ describe("runAgent", () => {
           content: [
             toolCall("c1", "add_item", {
               item_id: "cheeseburger",
+              said: "Two cheeseburgers no pickles",
               qty: 2,
               choices: [{ group_id: "hold-classic", option_ids: ["no-pickles"] }],
             }),
-            toolCall("c2", "add_item", { item_id: "fries", choices: [{ group_id: "fries-size", option_ids: ["large"] }] }),
+            toolCall("c2", "add_item", { item_id: "fries", said: "a large fries", choices: [{ group_id: "fries-size", option_ids: ["large"] }] }),
           ],
           finishReason: { unified: "tool-calls", raw: "tool_use" },
           usage,
@@ -71,6 +72,39 @@ describe("runAgent", () => {
     expect(prompt).toContain("Current cart:");
   });
 
+  it("streams the reply as it's written, dropping text written before more tool calls", async () => {
+    const text = (id: string, ...deltas: string[]) => [
+      { type: "text-start" as const, id },
+      ...deltas.map((delta) => ({ type: "text-delta" as const, id, delta })),
+      { type: "text-end" as const, id },
+    ];
+    const finish = (unified: "tool-calls" | "stop") => ({ type: "finish" as const, finishReason: { unified, raw: undefined }, usage });
+    const model = new MockLanguageModelV4({
+      doStream: [
+        {
+          stream: convertArrayToReadableStream([
+            ...text("t1", "Let me add that."),
+            toolCall("c1", "add_item", { item_id: "fries", said: "a large fries", choices: [{ group_id: "fries-size", option_ids: ["large"] }] }),
+            finish("tool-calls"),
+          ]),
+        },
+        { stream: convertArrayToReadableStream([...text("t2", "Got it. ", "Anything else?"), finish("stop")]) },
+      ],
+    });
+    const events: ReplyEvent[] = [];
+
+    const result = await runAgent(input(model, { userText: "a large fries", onReply: (e) => events.push(e) }));
+
+    expect(events).toEqual([
+      { type: "text", text: "Let me add that." },
+      { type: "restart" },
+      { type: "text", text: "Got it. " },
+      { type: "text", text: "Anything else?" },
+    ]);
+    expect(result.reply).toBe("Got it. Anything else?");
+    expect(result.state.cart.lines.map((l) => l.itemId)).toEqual(["fries"]);
+  });
+
   it("leaves the saved order untouched when the model call fails", async () => {
     const model = new MockLanguageModelV4({
       doGenerate: async () => {
@@ -80,5 +114,26 @@ describe("runAgent", () => {
     const state = newOrderState();
     await expect(runAgent(input(model, { state }))).rejects.toThrow();
     expect(state.cart.lines).toEqual([]);
+  });
+});
+
+describe("staticInstructions", () => {
+  const base = { menu: demoMenu, restaurantName: "Patty & Co.", upsellEnabled: false };
+
+  it("keeps replies short and leaves prices out by default", () => {
+    const prompt = staticInstructions(base);
+    expect(prompt).toContain("about 20 words");
+    expect(prompt).toContain("Never say prices unless");
+    expect(prompt).not.toContain("owner's notes");
+  });
+
+  it("follows the owner's reply style", () => {
+    const prompt = staticInstructions({
+      ...base,
+      style: { replyLength: "detailed", prices: "always", houseStyle: "Greet people with G'day." },
+    });
+    expect(prompt).toContain("about 60 words");
+    expect(prompt).toContain("Say each item's price");
+    expect(prompt).toContain("never change the rules above):\nGreet people with G'day.");
   });
 });

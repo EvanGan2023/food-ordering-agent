@@ -1,5 +1,5 @@
 import { formatPrice, getGroup, getItem, localTime } from "./menu";
-import type { Availability, Cart, CartLine, Menu, MenuItem, Selections } from "./schema";
+import type { Availability, Cart, CartLine, Menu, MenuItem, ModifierGroup, Selections } from "./schema";
 
 export const MAX_QTY = 50;
 
@@ -9,21 +9,23 @@ export interface ChoiceOption {
   priceDelta: number;
 }
 
+/** A choice group the customer still has to pick from. */
+export interface ChoiceGroup {
+  groupId: string;
+  groupName: string;
+  min: number;
+  max: number;
+  options: ChoiceOption[];
+}
+
 export type CartError =
   | { code: "unknown_item"; itemId: string }
   | { code: "out_of_stock"; itemId: string; name: string }
   | { code: "unavailable_now"; itemId: string; name: string; availability: Availability }
   | { code: "unknown_modifier_group"; itemId: string; groupId: string }
   | { code: "invalid_option"; groupId: string; optionId: string }
-  | {
-      code: "missing_choice";
-      itemId: string;
-      groupId: string;
-      groupName: string;
-      min: number;
-      max: number;
-      options: ChoiceOption[];
-    }
+  /** Every required group still unpicked, so all of them can be asked in one question. */
+  | { code: "missing_choice"; itemId: string; groups: ChoiceGroup[] }
   | { code: "too_many_choices"; groupId: string; max: number }
   | { code: "invalid_quantity"; qty: number }
   | { code: "unknown_line"; lineId: string }
@@ -51,7 +53,7 @@ export function checkAvailable(menu: Menu, item: MenuItem, now: Date): CartError
 /**
  * Applies defaults and checks every modifier group of an item.
  * Groups the customer didn't mention fall back to their default options;
- * a required group with no default comes back as `missing_choice` so the agent can ask.
+ * required groups with no default come back together as `missing_choice` so the agent can ask once.
  */
 export function resolveSelections(menu: Menu, item: MenuItem, requested: Selections = {}): Result<Selections> {
   for (const groupId of Object.keys(requested)) {
@@ -61,6 +63,7 @@ export function resolveSelections(menu: Menu, item: MenuItem, requested: Selecti
   }
 
   const resolved: Selections = {};
+  const missing: ChoiceGroup[] = [];
   for (const groupId of item.modifierGroupIds) {
     const group = getGroup(menu, groupId);
     if (!group) return fail({ code: "unknown_modifier_group", itemId: item.id, groupId });
@@ -74,20 +77,24 @@ export function resolveSelections(menu: Menu, item: MenuItem, requested: Selecti
       }
     }
     if (chosen.length < group.min) {
-      return fail({
-        code: "missing_choice",
-        itemId: item.id,
-        groupId,
-        groupName: group.name,
-        min: group.min,
-        max: group.max,
-        options: group.options.map(({ id, name, priceDelta }) => ({ id, name, priceDelta })),
-      });
+      missing.push(choiceGroup(group));
+      continue;
     }
     if (chosen.length > group.max) return fail({ code: "too_many_choices", groupId, max: group.max });
     if (chosen.length > 0) resolved[groupId] = chosen;
   }
+  if (missing.length) return fail({ code: "missing_choice", itemId: item.id, groups: missing });
   return ok(resolved);
+}
+
+export function choiceGroup(group: ModifierGroup): ChoiceGroup {
+  return {
+    groupId: group.id,
+    groupName: group.name,
+    min: group.min,
+    max: group.max,
+    options: group.options.map(({ id, name, priceDelta }) => ({ id, name, priceDelta })),
+  };
 }
 
 function checkQty(qty: number): CartError | null {

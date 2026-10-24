@@ -1,14 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible, Bricolage_Grotesque } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage", display: "swap" });
-const body = Atkinson_Hyperlegible({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-atkinson",
-  display: "swap",
-});
+// One typeface for every screen, matching the agent UI design.
+const sans = Space_Grotesk({ subsets: ["latin"], variable: "--font-space", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Patty & Co. (demo) | Food Ordering Agent",
@@ -23,7 +18,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-AU" className={`${display.variable} ${body.variable}`}>
+    <html lang="en-AU" className={sans.variable}>
       <body className="min-h-dvh antialiased">{children}</body>
     </html>
   );

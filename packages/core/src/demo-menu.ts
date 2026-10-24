@@ -577,6 +577,8 @@ const mealBases = [
 const meals: Item[] = mealBases.map((baseId) => {
   const base = items.find((item) => item.id === baseId);
   if (!base) throw new Error(`meal base "${baseId}" not found`);
+  // Ordered on its own, the agent offers the meal once.
+  base.mealItemId = `${base.id}-meal`;
   return {
     id: `${base.id}-meal`,
     name: `${base.name} Meal`,

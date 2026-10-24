@@ -94,7 +94,7 @@ export function AdminSettings() {
           <div className="mt-4 space-y-3">
             <Toggle
               label="AI ordering assistant"
-              hint="When off, customers order by tapping the menu."
+              hint="When off, customers are asked to order at the counter."
               checked={settings.agentEnabled}
               onChange={(agentEnabled) => setSettings({ ...settings, agentEnabled })}
             />
@@ -104,7 +104,59 @@ export function AdminSettings() {
               checked={settings.upsellEnabled}
               onChange={(upsellEnabled) => setSettings({ ...settings, upsellEnabled })}
             />
+            <Toggle
+              label="Offer meals"
+              hint="When someone orders a burger on its own, the assistant asks once if they'd like the meal."
+              checked={settings.offerMeals}
+              onChange={(offerMeals) => setSettings({ ...settings, offerMeals })}
+            />
           </div>
+        </section>
+
+        <section className="rounded-3xl border-2 border-line bg-card p-5" aria-labelledby="style-title">
+          <h2 id="style-title" className="font-display text-xl font-extrabold">
+            How the assistant talks
+          </h2>
+          <p className="text-char-soft">Replies are read aloud, so shorter feels faster.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="font-bold">Reply length</span>
+              <select
+                value={settings.replyLength}
+                onChange={(e) => setSettings({ ...settings, replyLength: e.target.value as Settings["replyLength"] })}
+                className="mt-1 h-11 w-full rounded-xl border-2 border-line bg-card px-3 outline-none focus:border-pickle"
+              >
+                <option value="short">Short (about 20 words)</option>
+                <option value="medium">Medium (about 35 words)</option>
+                <option value="detailed">Detailed (about 60 words)</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="font-bold">Prices</span>
+              <select
+                value={settings.prices}
+                onChange={(e) => setSettings({ ...settings, prices: e.target.value as Settings["prices"] })}
+                className="mt-1 h-11 w-full rounded-xl border-2 border-line bg-card px-3 outline-none focus:border-pickle"
+              >
+                <option value="when_asked">Only when asked, and the total</option>
+                <option value="always">Also when listing or confirming items</option>
+              </select>
+            </label>
+          </div>
+          <label className="mt-4 block">
+            <span className="font-bold">House style</span>
+            <span className="block text-sm text-char-soft">
+              Tone, greetings or a line to mention, in your own words. The ordering rules always come first.
+            </span>
+            <textarea
+              value={settings.houseStyle}
+              maxLength={500}
+              rows={3}
+              placeholder={"Friendly and casual. Greet people with \"G'day\".\nMention 2-for-1 Tuesdays once per order."}
+              onChange={(e) => setSettings({ ...settings, houseStyle: e.target.value })}
+              className="mt-1 w-full rounded-xl border-2 border-line px-3 py-2 outline-none focus:border-pickle"
+            />
+          </label>
         </section>
 
         <section className="rounded-3xl border-2 border-line bg-card p-5" aria-labelledby="questions-title">

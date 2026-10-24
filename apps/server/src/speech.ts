@@ -1,8 +1,12 @@
-/** Speech-to-text and text-to-speech behind one interface, so other providers can plug in later. */
-export interface SpeechProvider {
+/** Speech-to-text and text-to-speech are separate, so providers can be mixed (e.g. browser STT + Kokoro TTS). */
+export interface SpeechToText {
   name: string;
   transcribe(audio: Blob, filename: string): Promise<string>;
-  /** Streams spoken audio (MP3) for the text. */
+}
+
+export interface TextToSpeech {
+  name: string;
+  /** Streams spoken audio for the text. */
   speak(text: string): Promise<{ body: ReadableStream<Uint8Array>; contentType: string }>;
 }
 
@@ -38,7 +42,7 @@ export function elevenLabsConfigFromEnv(env: Record<string, string | undefined> 
   };
 }
 
-export function createElevenLabs(config: ElevenLabsConfig): SpeechProvider {
+export function createElevenLabs(config: ElevenLabsConfig): SpeechToText & TextToSpeech {
   const failure = async (what: string, res: Response) => {
     const detail = await res.text().catch(() => "");
     return new SpeechError(`ElevenLabs ${what} failed (${res.status}): ${detail.slice(0, 300)}`, res.status);

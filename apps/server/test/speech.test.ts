@@ -3,13 +3,13 @@ import { demoMenu, type Health } from "@foa/core";
 import { createApp } from "../src/app";
 import { migrate, openDb, type Db } from "../src/db";
 import { kitchenScreenPos } from "../src/pos";
-import { SpeechError, elevenLabsConfigFromEnv, type SpeechProvider } from "../src/speech";
+import { SpeechError, elevenLabsConfigFromEnv, type SpeechToText, type TextToSpeech } from "../src/speech";
 import { Store } from "../src/store";
 
 let db: Db;
 const spoken: string[] = [];
 
-const fakeSpeech: SpeechProvider = {
+const fakeSpeech: SpeechToText & TextToSpeech = {
   name: "elevenlabs",
   async transcribe(audio) {
     if (audio.size === 3) throw new SpeechError("bad key", 401);
@@ -21,8 +21,8 @@ const fakeSpeech: SpeechProvider = {
   },
 };
 
-const makeApp = (speech: SpeechProvider | null) =>
-  createApp({ store: new Store(db), menu: demoMenu, pos: kitchenScreenPos, model: null, speech });
+const makeApp = (speech: (SpeechToText & TextToSpeech) | null, tts: TextToSpeech | null = speech) =>
+  createApp({ store: new Store(db), menu: demoMenu, pos: kitchenScreenPos, model: null, stt: speech, tts });
 
 const recording = (bytes: string) => {
   const form = new FormData();
@@ -42,6 +42,20 @@ describe("speech routes", () => {
     expect(on.speech).toEqual({ stt: "elevenlabs", tts: "elevenlabs" });
     const off = (await (await makeApp(null).request("/api/health")).json()) as Health;
     expect(off.speech).toEqual({ stt: "browser", tts: null });
+  });
+
+  it("mixes providers: browser listening with a local voice", async () => {
+    const kokoro: TextToSpeech = {
+      name: "kokoro",
+      speak: async () => ({ body: new Blob(["wav"]).stream(), contentType: "audio/wav" }),
+    };
+    const app = makeApp(null, kokoro);
+    const health = (await (await app.request("/api/health")).json()) as Health;
+    expect(health.speech).toEqual({ stt: "browser", tts: "kokoro" });
+    const spokenRes = await app.request("/api/speech/speak?text=Hi");
+    expect(spokenRes.headers.get("content-type")).toBe("audio/wav");
+    const heard = await app.request("/api/speech/transcribe", { method: "POST", body: recording("audio-bytes") });
+    expect(heard.status).toBe(503);
   });
 
   it("transcribes an uploaded recording", async () => {

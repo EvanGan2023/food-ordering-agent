@@ -39,12 +39,15 @@ export function DemoBadge() {
   );
 }
 
-export function Brand({ href = "/", size = "regular" }: { href?: string | null; size?: Size }) {
+/** The restaurant's name from its menu, without the "(demo)" note (the Demo badge shows that). */
+export const restaurantName = (menuName: string | undefined) => menuName?.replace(/\s*\(demo\)$/, "") ?? "";
+
+export function Brand({ href = "/", size = "regular", name = "Patty & Co." }: { href?: string | null; size?: Size; name?: string }) {
   const content = (
     <>
       <BrandMark className={size === "kiosk" ? "h-10 w-10" : "h-7 w-7"} />
       <span className={`font-display font-extrabold tracking-tight ${size === "kiosk" ? "text-3xl" : "text-xl"}`}>
-        Patty &amp; Co.
+        {name}
       </span>
       <DemoBadge />
     </>

@@ -1,6 +1,6 @@
 {
   "menuId": "patty-and-co",
-  "notes": "Sample orders for the Patty & Co. demo menu. Each case pairs what a customer says with the cart the agent should build. 'at' is the order time (UTC); cases without it use 2026-07-15T04:00:00Z, 2pm in Sydney, when breakfast is over. Subtotals are AUD cents.",
+  "notes": "Sample orders for the Patty & Co. demo menu. Each case pairs what a customer says with the cart the agent should build. 'at' is the order time (UTC); cases without it use 2026-07-15T04:00:00Z, 2pm in Sydney, when breakfast is over. Subtotals are AUD cents. 'confirmations' are misheard or loose orders: after the first message the guessed lines must NOT be in the cart (the agent asks), and after the customer's reply the cart must match 'lines'. 'conversations' are multi-turn, checked after each message like in tea-orders.json; they cover the meal offer and asking several choices at once.",
   "orders": [
     {
       "id": "o01",
@@ -43,7 +43,11 @@
       "lines": [
         {
           "itemId": "kids-pack",
-          "modifiers": { "kids-main": ["cheeseburger"], "kids-side": ["apple-slices"], "kids-drink": ["water"] }
+          "modifiers": {
+            "kids-main": ["cheeseburger"],
+            "kids-side": ["apple-slices"],
+            "kids-drink": ["water"]
+          }
         }
       ],
       "subtotal": 690
@@ -62,7 +66,9 @@
     {
       "id": "o07",
       "utterance": "Classic burger with extra cheese and bacon",
-      "lines": [{ "itemId": "classic-burger", "modifiers": { "burger-extras": ["extra-cheese", "add-bacon"] } }],
+      "lines": [
+        { "itemId": "classic-burger", "modifiers": { "burger-extras": ["extra-cheese", "add-bacon"] } }
+      ],
       "subtotal": 680
     },
     {
@@ -103,7 +109,9 @@
     {
       "id": "o12",
       "utterance": "20 chicken bites to share with BBQ, ranch and garlic aioli",
-      "lines": [{ "itemId": "chicken-bites-20", "modifiers": { "bites-sauce-share": ["bbq", "ranch", "aioli"] } }],
+      "lines": [
+        { "itemId": "chicken-bites-20", "modifiers": { "bites-sauce-share": ["bbq", "ranch", "aioli"] } }
+      ],
       "subtotal": 1690
     },
     {
@@ -137,10 +145,7 @@
     {
       "id": "o16",
       "utterance": "Chicken wrap and a large cola",
-      "lines": [
-        { "itemId": "chicken-wrap" },
-        { "itemId": "cola", "modifiers": { "drink-size": ["large"] } }
-      ],
+      "lines": [{ "itemId": "chicken-wrap" }, { "itemId": "cola", "modifiers": { "drink-size": ["large"] } }],
       "subtotal": 1120
     },
     {
@@ -156,8 +161,14 @@
       "id": "o18",
       "utterance": "Two Smoky Bacon Deluxe meals, both large, one with a cola and one with a chocolate thickshake",
       "lines": [
-        { "itemId": "smoky-bacon-deluxe-meal", "modifiers": { "meal-size": ["large"], "meal-drink": ["cola"] } },
-        { "itemId": "smoky-bacon-deluxe-meal", "modifiers": { "meal-size": ["large"], "meal-drink": ["choc-shake"] } }
+        {
+          "itemId": "smoky-bacon-deluxe-meal",
+          "modifiers": { "meal-size": ["large"], "meal-drink": ["cola"] }
+        },
+        {
+          "itemId": "smoky-bacon-deluxe-meal",
+          "modifiers": { "meal-size": ["large"], "meal-drink": ["choc-shake"] }
+        }
       ],
       "subtotal": 3130
     },
@@ -204,31 +215,34 @@
       "id": "c01",
       "utterance": "A sundae",
       "attempt": { "itemId": "sundae" },
-      "expectError": { "code": "missing_choice", "groupId": "sundae-topping" }
+      "expectError": { "code": "missing_choice", "groups": [{ "groupId": "sundae-topping" }] }
     },
     {
       "id": "c02",
       "utterance": "Cheeseburger meal",
       "attempt": { "itemId": "cheeseburger-meal" },
-      "expectError": { "code": "missing_choice", "groupId": "meal-drink" }
+      "expectError": { "code": "missing_choice", "groups": [{ "groupId": "meal-drink" }] }
     },
     {
       "id": "c03",
       "utterance": "Kids pack please",
       "attempt": { "itemId": "kids-pack" },
-      "expectError": { "code": "missing_choice", "groupId": "kids-main" }
+      "expectError": {
+        "code": "missing_choice",
+        "groups": [{ "groupId": "kids-main" }, { "groupId": "kids-drink" }]
+      }
     },
     {
       "id": "c04",
       "utterance": "6 chicken bites",
       "attempt": { "itemId": "chicken-bites-6" },
-      "expectError": { "code": "missing_choice", "groupId": "bites-sauce" }
+      "expectError": { "code": "missing_choice", "groups": [{ "groupId": "bites-sauce" }] }
     },
     {
       "id": "c05",
       "utterance": "A thickshake",
       "attempt": { "itemId": "thickshake" },
-      "expectError": { "code": "missing_choice", "groupId": "shake-flavour" }
+      "expectError": { "code": "missing_choice", "groups": [{ "groupId": "shake-flavour" }] }
     },
     {
       "id": "c06",
@@ -236,6 +250,139 @@
       "at": "2026-07-15T04:00:00Z",
       "attempt": { "itemId": "bacon-egg-muffin" },
       "expectError": { "code": "unavailable_now" }
+    }
+  ],
+  "confirmations": [
+    {
+      "id": "k01",
+      "turns": ["Can I get a spicy chikken burger", "Yes"],
+      "lines": [{ "itemId": "spicy-chicken-burger" }]
+    },
+    {
+      "id": "k02",
+      "turns": ["A cheese burgr and chips", "Yes please"],
+      "lines": [{ "itemId": "cheeseburger" }, { "itemId": "fries" }]
+    },
+    {
+      "id": "k03",
+      "turns": ["Two dubble cheese burgers", "Yes, the double cheeseburgers"],
+      "lines": [{ "itemId": "double-cheeseburger", "qty": 2 }]
+    },
+    { "id": "k04", "turns": ["A flat wite", "Yeah"], "lines": [{ "itemId": "flat-white" }] },
+    {
+      "id": "k05",
+      "turns": ["A cheeseburger meal with a coke", "Yes, regular cola"],
+      "lines": [{ "itemId": "cheeseburger-meal", "modifiers": { "meal-drink": ["cola"] } }]
+    },
+    {
+      "id": "k06",
+      "turns": ["A cheese burglar and ships", "Yes"],
+      "lines": [{ "itemId": "cheeseburger" }, { "itemId": "fries" }]
+    },
+    {
+      "id": "k07",
+      "turns": ["A double stuck meal with a lemonade", "Yes"],
+      "lines": [{ "itemId": "double-stack-meal", "modifiers": { "meal-drink": ["lemonade"] } }]
+    },
+    {
+      "id": "k08",
+      "turns": ["Flat what with oat milk", "Yes"],
+      "lines": [{ "itemId": "flat-white", "modifiers": { "coffee-milk": ["oat"] } }]
+    }
+  ],
+  "conversations": [
+    {
+      "id": "pc1",
+      "turns": [
+        {
+          "say": "A cheeseburger",
+          "expect": { "cart": [{ "itemId": "cheeseburger" }], "offers": ["meal"], "replyMentions": ["meal"] }
+        },
+        {
+          "say": "Yes, with a lemonade",
+          "expect": {
+            "cart": [{ "itemId": "cheeseburger-meal", "modifiers": { "meal-drink": ["lemonade"] } }]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pc2",
+      "turns": [
+        { "say": "A double stack", "expect": { "cart": [{ "itemId": "double-stack" }], "offers": ["meal"] } },
+        {
+          "say": "Yes please",
+          "expect": {
+            "cart": [{ "itemId": "double-stack" }],
+            "asks": ["meal-drink"],
+            "replyMentions": ["drink|cola|lemonade|soda|tea|water|juice|shake"]
+          }
+        },
+        {
+          "say": "Cola zero",
+          "expect": {
+            "cart": [{ "itemId": "double-stack-meal", "modifiers": { "meal-drink": ["cola-zero"] } }]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pc3",
+      "turns": [
+        {
+          "say": "A spicy chicken burger",
+          "expect": { "cart": [{ "itemId": "spicy-chicken-burger" }], "offers": ["meal"] }
+        },
+        {
+          "say": "No thanks, that's all",
+          "expect": { "cart": [{ "itemId": "spicy-chicken-burger" }], "offers": [] }
+        }
+      ]
+    },
+    {
+      "id": "pc4",
+      "turns": [
+        { "say": "Cheeseburger meal", "expect": { "cart": [], "asks": ["meal-drink"] } },
+        {
+          "say": "Orange juice",
+          "expect": {
+            "cart": [{ "itemId": "cheeseburger-meal", "modifiers": { "meal-drink": ["orange-juice"] } }]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pc5",
+      "turns": [
+        {
+          "say": "Kids pack please",
+          "expect": {
+            "cart": [],
+            "asks": ["kids-main", "kids-drink"],
+            "replyMentions": ["drink|water|juice|milk"]
+          }
+        },
+        {
+          "say": "Cheeseburger and apple juice",
+          "expect": {
+            "cart": [
+              {
+                "itemId": "kids-pack",
+                "modifiers": { "kids-main": ["cheeseburger"], "kids-drink": ["apple-juice"] }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pc6",
+      "turns": [
+        {
+          "say": "What burgers do you have?",
+          "expect": { "cart": [], "replyAvoids": ["\\$", "\\d+\\.\\d\\d"], "maxReplyWords": 30 }
+        }
+      ]
     }
   ]
 }

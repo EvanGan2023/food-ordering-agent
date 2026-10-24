@@ -2,8 +2,8 @@ import Link from "next/link";
 import { BrandMark, DemoBadge } from "@/components/ui";
 
 const pages = [
-  { href: "/order/demo", title: "Ordering link", text: "What customers use on the restaurant's website or phone: chat, talk or tap to order." },
-  { href: "/kiosk", title: "Kiosk", text: "Counter iPad mode with big buttons, voice and pay-at-pickup codes." },
+  { href: "/order/demo", title: "Ordering link", text: "The agent restaurants embed on their own website: customers say or type their order." },
+  { href: "/kiosk", title: "Kiosk", text: "Portrait kiosk screen (a monitor turned 90°): just say what you'd like." },
   { href: "/kitchen", title: "Kitchen screen", text: "Live tickets for staff, standing in for the POS while testing." },
   { href: "/admin", title: "Owner settings", text: "Turn the assistant on or off and choose the questions asked on every order." },
   { href: "/embed-demo", title: "Sample website", text: "A pretend restaurant homepage with the ordering button embedded." },

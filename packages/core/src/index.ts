@@ -5,3 +5,6 @@ export * from "./search";
 export * from "./questions";
 export type * from "./api";
 export { demoMenu, demoMenuInput } from "./demo-menu";
+export * from "./match";
+export { soundKey, soundSimilarity } from "./phonetic";
+export { teaMenu, teaMenuInput } from "./demo-tea-menu";

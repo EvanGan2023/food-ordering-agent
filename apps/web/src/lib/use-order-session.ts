@@ -26,6 +26,12 @@ function writeStorage(key: string, value: string | null) {
   }
 }
 
+export interface LiveReply {
+  text: string;
+  seq: number;
+  done: boolean;
+}
+
 /**
  * Owns one ordering session: loading the menu, creating or restoring the session,
  * and every cart, chat, answer and checkout call. Pages only render what it returns.
@@ -40,8 +46,12 @@ export function useOrderSession(channel: Channel, storageKey?: string) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [assistantDown, setAssistantDown] = useState(false);
   const [health, setHealth] = useState<Health | null>(null);
-  /** The agent's latest chat reply; `seq` changes even when the same text repeats. Tap changes never set it. */
-  const [lastReply, setLastReply] = useState<{ text: string; seq: number } | null>(null);
+  /**
+   * The agent's latest chat reply, filled in as it's written until `done`. `seq` changes with each
+   * reply (and when the agent drops what it had written), even when the text repeats. Tap changes never set it.
+   */
+  const [reply, setReply] = useState<LiveReply | null>(null);
+  const replySeq = useRef(0);
   const sessionId = useRef<string | null>(null);
 
   const remember = useCallback(
@@ -140,14 +150,20 @@ export function useOrderSession(channel: Channel, storageKey?: string) {
       const id = sessionId.current;
       if (!id || !text.trim()) return false;
       setThinking(text);
+      const fresh = () => ({ text: "", seq: ++replySeq.current, done: false });
+      setReply(fresh());
       try {
-        const res = await api.message(id, text);
+        const res = await api.messageStream(id, text, (event) => {
+          if (event.type === "restart") setReply(fresh());
+          else setReply((prev) => (prev && !prev.done ? { ...prev, text: prev.text + event.text } : prev));
+        });
         remember(res.session);
-        if (res.reply) setLastReply((prev) => ({ text: res.reply, seq: (prev?.seq ?? 0) + 1 }));
+        setReply((prev) => ({ text: res.reply, seq: prev?.seq ?? ++replySeq.current, done: true }));
         setAssistantDown(false);
         setNotice(null);
         return true;
       } catch (err) {
+        setReply(null);
         fail(err);
         return false;
       } finally {
@@ -221,7 +237,7 @@ export function useOrderSession(channel: Channel, storageKey?: string) {
     notice,
     assistantDown,
     health,
-    lastReply,
+    reply,
     dismissNotice: () => setNotice(null),
     reload: load,
     send,

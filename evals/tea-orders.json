@@ -1,0 +1,261 @@
+{
+  "menuId": "bramble-tea",
+  "notes": "Sample orders for the Bramble Tea demo menu (fictional bubble tea shop). Drinks must have size, sugar and ice (no defaults), so the agent asks for whatever is missing in one question, and it offers toppings once. 'orders' are single messages that name everything; the cart must match exactly. 'conversations' are multi-turn: after each customer message the cart, the choices being asked ('asks', group ids), the offers ('offers': 'meal' or group ids) and words the reply must mention ('replyMentions', regexes), words it must not say ('replyAvoids', e.g. prices nobody asked for) and its length ('maxReplyWords') are checked when given. Times default to 2026-07-15T04:00:00Z. Subtotals are AUD cents. 'confirmations' are misheard by sound, as speech-to-text does: the guessed lines must not be in the cart after the first message, and after 'Yes' the cart must match.",
+  "orders": [
+    {
+      "id": "t01",
+      "utterance": "A large classic milk tea, half sugar, less ice, with pearls",
+      "lines": [
+        {
+          "itemId": "classic-milk-tea",
+          "modifiers": { "tea-size": ["large"], "sugar": ["50"], "ice": ["less"], "toppings": ["pearls"] }
+        }
+      ],
+      "subtotal": 830
+    },
+    {
+      "id": "t02",
+      "utterance": "Two medium mango slush, no sugar, with coconut jelly",
+      "lines": [
+        {
+          "itemId": "mango-slush",
+          "qty": 2,
+          "modifiers": { "tea-size": ["medium"], "sugar": ["0"], "toppings": ["coconut-jelly"] }
+        }
+      ],
+      "subtotal": 1660
+    },
+    {
+      "id": "t03",
+      "utterance": "Large taro milk tea with oat milk, 25% sugar, no ice, pudding and boba",
+      "lines": [
+        {
+          "itemId": "taro-milk-tea",
+          "modifiers": {
+            "tea-size": ["large"],
+            "sugar": ["25"],
+            "ice": ["none"],
+            "tea-milk": ["oat"],
+            "toppings": ["pudding", "pearls"]
+          }
+        }
+      ],
+      "subtotal": 1030
+    },
+    {
+      "id": "t04",
+      "utterance": "Medium passionfruit green tea, 75% sugar, regular ice",
+      "lines": [
+        {
+          "itemId": "passionfruit-green-tea",
+          "modifiers": { "tea-size": ["medium"], "sugar": ["75"], "ice": ["regular"] }
+        }
+      ],
+      "subtotal": 680
+    },
+    {
+      "id": "t05",
+      "utterance": "Popcorn chicken, spicy, and sweet potato fries with plum powder",
+      "lines": [
+        { "itemId": "popcorn-chicken", "modifiers": { "seasoning": ["spicy"] } },
+        { "itemId": "sweet-potato-fries", "modifiers": { "seasoning": ["plum"] } }
+      ],
+      "subtotal": 1500
+    },
+    {
+      "id": "t06",
+      "utterance": "A large brown sugar milk tea, full sugar, no ice, and a medium thai milk tea, half sugar, less ice, with grass jelly",
+      "lines": [
+        {
+          "itemId": "brown-sugar-milk-tea",
+          "modifiers": { "tea-size": ["large"], "sugar": ["100"], "ice": ["none"] }
+        },
+        {
+          "itemId": "thai-milk-tea",
+          "modifiers": {
+            "tea-size": ["medium"],
+            "sugar": ["50"],
+            "ice": ["less"],
+            "toppings": ["grass-jelly"]
+          }
+        }
+      ],
+      "subtotal": 1630
+    },
+    {
+      "id": "t07",
+      "utterance": "Strawberry slush, large, half sweet, with popping pearls and cheese foam",
+      "lines": [
+        {
+          "itemId": "strawberry-slush",
+          "modifiers": { "tea-size": ["large"], "sugar": ["50"], "toppings": ["popping", "cheese-foam"] }
+        }
+      ],
+      "subtotal": 1070
+    },
+    {
+      "id": "t08",
+      "utterance": "Lychee tea, medium, no sugar, light ice",
+      "lines": [
+        {
+          "itemId": "lychee-black-tea",
+          "modifiers": { "tea-size": ["medium"], "sugar": ["0"], "ice": ["less"] }
+        }
+      ],
+      "subtotal": 680
+    }
+  ],
+  "confirmations": [
+    {
+      "id": "tk1",
+      "turns": ["Can I get a large terror milk tea, half sugar, less ice", "Yes"],
+      "lines": [
+        {
+          "itemId": "taro-milk-tea",
+          "modifiers": { "tea-size": ["large"], "sugar": ["50"], "ice": ["less"] }
+        }
+      ]
+    },
+    {
+      "id": "tk2",
+      "turns": ["A medium tie milk tea, no sugar, regular ice", "Yes"],
+      "lines": [
+        {
+          "itemId": "thai-milk-tea",
+          "modifiers": { "tea-size": ["medium"], "sugar": ["0"], "ice": ["regular"] }
+        }
+      ]
+    },
+    {
+      "id": "tk3",
+      "turns": ["Peach oh long, large, 75% sugar, no ice", "Yes"],
+      "lines": [
+        { "itemId": "peach-oolong", "modifiers": { "tea-size": ["large"], "sugar": ["75"], "ice": ["none"] } }
+      ]
+    },
+    {
+      "id": "tk4",
+      "turns": ["A large classic milk tea, have sugar, less ice", "Yes"],
+      "lines": [
+        {
+          "itemId": "classic-milk-tea",
+          "modifiers": { "tea-size": ["large"], "sugar": ["50"], "ice": ["less"] }
+        }
+      ]
+    }
+  ],
+  "conversations": [
+    {
+      "id": "tc1",
+      "turns": [
+        {
+          "say": "A taro milk tea",
+          "expect": {
+            "cart": [],
+            "asks": ["tea-size", "sugar", "ice"],
+            "replyMentions": ["size|medium|large", "sugar|sweet", "ice"]
+          }
+        },
+        {
+          "say": "Large, half sugar, less ice",
+          "expect": {
+            "cart": [
+              {
+                "itemId": "taro-milk-tea",
+                "modifiers": { "tea-size": ["large"], "sugar": ["50"], "ice": ["less"] }
+              }
+            ],
+            "offers": ["toppings"],
+            "replyMentions": ["topping|pearl|jelly|pudding|foam"]
+          }
+        },
+        {
+          "say": "Pearls please",
+          "expect": {
+            "cart": [
+              {
+                "itemId": "taro-milk-tea",
+                "modifiers": {
+                  "tea-size": ["large"],
+                  "sugar": ["50"],
+                  "ice": ["less"],
+                  "toppings": ["pearls"]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "tc2",
+      "turns": [
+        { "say": "Two jasmine milk teas", "expect": { "cart": [], "asks": ["tea-size", "sugar", "ice"] } },
+        {
+          "say": "Medium, 50% sugar, regular ice",
+          "expect": {
+            "cart": [
+              {
+                "itemId": "jasmine-milk-tea",
+                "qty": 2,
+                "modifiers": { "tea-size": ["medium"], "sugar": ["50"], "ice": ["regular"] }
+              }
+            ],
+            "offers": ["toppings"]
+          }
+        },
+        {
+          "say": "No thanks",
+          "expect": {
+            "cart": [
+              {
+                "itemId": "jasmine-milk-tea",
+                "qty": 2,
+                "modifiers": { "tea-size": ["medium"], "sugar": ["50"], "ice": ["regular"] }
+              }
+            ],
+            "offers": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "tc3",
+      "turns": [
+        { "say": "A mango green tea, large, no sugar", "expect": { "cart": [], "asks": ["ice"] } },
+        {
+          "say": "Less ice",
+          "expect": {
+            "cart": [
+              {
+                "itemId": "mango-green-tea",
+                "modifiers": { "tea-size": ["large"], "sugar": ["0"], "ice": ["less"] }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "tc4",
+      "turns": [
+        { "say": "Popcorn chicken", "expect": { "cart": [], "asks": ["seasoning"] } },
+        {
+          "say": "Salt and pepper",
+          "expect": {
+            "cart": [{ "itemId": "popcorn-chicken", "modifiers": { "seasoning": ["salt-pepper"] } }]
+          }
+        }
+      ]
+    },
+    {
+      "id": "tc5",
+      "turns": [
+        {
+          "say": "What milk teas do you have?",
+          "expect": { "cart": [], "replyAvoids": ["\\$", "\\d+\\.\\d\\d"], "maxReplyWords": 30 }
+        }
+      ]
+    }
+  ]
+}

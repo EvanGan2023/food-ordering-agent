@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { logger } from "hono/logger";
 import { z } from "zod";
-import { newOrderState, runAgent } from "@foa/agent";
+import { defaultReplyStyle, newOrderState, runAgent, type ReplyEvent } from "@foa/agent";
 import {
   addItem,
   Channel,
@@ -18,6 +18,8 @@ import {
   type ApiError,
   type CartError,
   type Menu,
+  type MessageResponse,
+  type MessageStreamEvent,
   type Order,
   type OrderStatus,
   type SessionView,
@@ -25,17 +27,19 @@ import {
 } from "@foa/core";
 import type { LanguageModel } from "ai";
 import type { PosAdapter } from "./pos";
-import { SpeechError, type SpeechProvider } from "./speech";
+import { SpeechError, type SpeechToText, type TextToSpeech } from "./speech";
 import type { SessionRecord, Store } from "./store";
 
 export interface AppDeps {
   store: Store;
   menu: Menu;
   pos: PosAdapter;
-  /** Null when no LLM key is configured; the tap menu still works. */
+  /** Null when no LLM key is configured; the ordering screens then show "assistant offline". */
   model: LanguageModel | null;
-  /** Null when no speech key is configured; the web app falls back to the browser's speech recognition. */
-  speech?: SpeechProvider | null;
+  /** Null when no speech-to-text is configured; the web app uses the browser's speech recognition. */
+  stt?: SpeechToText | null;
+  /** Null when no text-to-speech is configured; replies are text only. */
+  tts?: TextToSpeech | null;
   now?: () => Date;
   log?: boolean;
 }
@@ -44,6 +48,10 @@ const SettingsSchema = z.object({
   restaurantName: z.string().trim().min(1).max(80),
   agentEnabled: z.boolean(),
   upsellEnabled: z.boolean(),
+  offerMeals: z.boolean().default(true),
+  replyLength: z.enum(["short", "medium", "detailed"]).default("short"),
+  prices: z.enum(["when_asked", "always"]).default("when_asked"),
+  houseStyle: z.string().trim().max(500).default(""),
   questions: z
     .array(OrderQuestion)
     .max(20)
@@ -108,15 +116,18 @@ export function createApp(deps: AppDeps) {
     return next;
   }
 
+  const defaultSettings: Settings = {
+    restaurantName: menu.name.replace(/\s*\(demo\)$/, ""),
+    agentEnabled: true,
+    upsellEnabled: true,
+    offerMeals: true,
+    ...defaultReplyStyle,
+    questions: defaultQuestions,
+  };
+
   async function settings(): Promise<Settings> {
-    return (
-      (await store.getSettings()) ?? {
-        restaurantName: "Patty & Co.",
-        agentEnabled: true,
-        upsellEnabled: true,
-        questions: defaultQuestions,
-      }
-    );
+    // Settings saved before a field existed get that field's default.
+    return { ...defaultSettings, ...(await store.getSettings()) };
   }
 
   async function view(session: SessionRecord): Promise<SessionView> {
@@ -129,7 +140,12 @@ export function createApp(deps: AppDeps) {
       answers: session.state.answers,
       questions,
       missingAnswers: unansweredRequired(questions, session.state.answers, session.channel).map((q) => q.id),
-      pendingChoice: session.state.pendingChoice,
+      // Sessions saved before choices were grouped have no `groups`; drop those.
+      pendingChoice: session.state.pendingChoice?.groups ? session.state.pendingChoice : null,
+      pendingOffers: (session.state.pendingOffers ?? [])
+        .filter((o) => session.state.cart.lines.some((l) => l.lineId === o.lineId))
+        .map(({ askedTurn: _, ...offer }) => offer),
+      pendingConfirm: session.state.pendingConfirm ? { changes: session.state.pendingConfirm.changes.map((c) => c.summary) } : null,
       messages: session.messages,
       orderId: session.orderId,
     };
@@ -173,18 +189,13 @@ export function createApp(deps: AppDeps) {
       ok: true,
       agent: deps.model !== null,
       pos: pos.name,
-      speech: { stt: deps.speech?.name ?? "browser", tts: deps.speech?.name ?? null },
+      speech: { stt: deps.stt?.name ?? "browser", tts: deps.tts?.name ?? null },
     }),
   );
 
-  function requireSpeech(): SpeechProvider {
-    if (!deps.speech) {
-      throw new ApiFailure(503, {
-        code: "speech_unavailable",
-        message: "No speech key is set on the server (ELEVENLABS_API_KEY).",
-      });
-    }
-    return deps.speech;
+  function require<T>(provider: T | null | undefined, missing: string): T {
+    if (!provider) throw new ApiFailure(503, { code: "speech_unavailable", message: missing });
+    return provider;
   }
 
   const speechFailure = (err: unknown) => {
@@ -197,7 +208,7 @@ export function createApp(deps: AppDeps) {
 
   // Push-to-talk audio from the browser (multipart field "audio") → { text }.
   app.post("/speech/transcribe", async (c) => {
-    const speech = requireSpeech();
+    const stt = require(deps.stt, "No speech-to-text is set up on the server (ELEVENLABS_API_KEY).");
     const form = await c.req.formData().catch(() => null);
     const audio = form?.get("audio");
     if (!(audio instanceof Blob) || audio.size === 0) {
@@ -206,7 +217,7 @@ export function createApp(deps: AppDeps) {
     if (audio.size > MAX_AUDIO_BYTES) throw new ApiFailure(400, { code: "bad_request", message: "recording too long" });
     const filename = audio instanceof File && audio.name ? audio.name : "speech.webm";
     try {
-      return c.json({ text: await speech.transcribe(audio, filename) });
+      return c.json({ text: await stt.transcribe(audio, filename) });
     } catch (err) {
       throw speechFailure(err);
     }
@@ -214,13 +225,13 @@ export function createApp(deps: AppDeps) {
 
   // GET so an <audio> element can stream it directly: /api/speech/speak?text=...
   app.get("/speech/speak", async (c) => {
-    const speech = requireSpeech();
+    const tts = require(deps.tts, "No text-to-speech is set up on the server (ELEVENLABS_API_KEY or TTS_PROVIDER=kokoro).");
     const text = (c.req.query("text") ?? "").trim();
     if (!text || text.length > MAX_SPOKEN_CHARS) {
       throw new ApiFailure(400, { code: "bad_request", message: `text must be 1-${MAX_SPOKEN_CHARS} characters` });
     }
     try {
-      const audio = await speech.speak(text);
+      const audio = await tts.speak(text);
       return new Response(audio.body, { headers: { "content-type": audio.contentType, "cache-control": "no-store" } });
     } catch (err) {
       throw speechFailure(err);
@@ -249,35 +260,42 @@ export function createApp(deps: AppDeps) {
     return c.json(await view(session));
   });
 
-  app.post("/sessions/:id/message", async (c) => {
-    const { text } = await readBody(c, bodies.message);
-    const id = c.req.param("id");
-    return withSessionLock(id, async () => {
+  const agentReady = async () => {
+    if (!(await settings()).agentEnabled) {
+      throw new ApiFailure(503, { code: "agent_unavailable", message: "The assistant is turned off. Tap to order." });
+    }
+    if (!deps.model) {
+      throw new ApiFailure(503, {
+        code: "agent_unavailable",
+        message: "No AI key is set on the server (ANTHROPIC_API_KEY). Tap to order.",
+      });
+    }
+    return deps.model;
+  };
+
+  /** One customer message through the agent, saved with its reply. `onReply` gets the reply as it's written. */
+  const agentTurn = (id: string, text: string, onReply?: (event: ReplyEvent) => void) =>
+    withSessionLock(id, async (): Promise<MessageResponse> => {
       const session = await openSession(id);
+      const model = await agentReady();
       const current = await settings();
-      if (!current.agentEnabled) {
-        throw new ApiFailure(503, { code: "agent_unavailable", message: "The assistant is turned off. Tap to order." });
-      }
-      if (!deps.model) {
-        throw new ApiFailure(503, {
-          code: "agent_unavailable",
-          message: "No AI key is set on the server (ANTHROPIC_API_KEY). Tap to order.",
-        });
-      }
 
       let result;
       try {
         result = await runAgent({
-          model: deps.model,
+          model,
           menu,
           restaurantName: current.restaurantName,
           upsellEnabled: current.upsellEnabled,
+          offerMeals: current.offerMeals,
+          style: { replyLength: current.replyLength, prices: current.prices, houseStyle: current.houseStyle },
           channel: session.channel,
           questions: questionsFor(current.questions, session.channel),
           state: session.state,
           history: session.messages.map(({ role, text }) => ({ role, text })),
           userText: text,
           now,
+          onReply,
         });
       } catch (err) {
         console.error("agent turn failed:", err);
@@ -295,7 +313,39 @@ export function createApp(deps: AppDeps) {
         { role: "assistant", text: result.reply, at },
       ];
       await store.saveSession(session);
-      return c.json({ reply: result.reply, session: await view(session) });
+      return { reply: result.reply, session: await view(session) };
+    });
+
+  app.post("/sessions/:id/message", async (c) => {
+    const { text } = await readBody(c, bodies.message);
+    return c.json(await agentTurn(c.req.param("id"), text));
+  });
+
+  // The same turn, streamed so the reply can be shown and spoken while it's written.
+  app.post("/sessions/:id/message/stream", async (c) => {
+    const { text } = await readBody(c, bodies.message);
+    const id = c.req.param("id");
+    // Problems known up front stay plain HTTP errors.
+    await openSession(id);
+    await agentReady();
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (event: MessageStreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        try {
+          send({ type: "done", ...(await agentTurn(id, text, send)) });
+        } catch (err) {
+          if (err instanceof ApiFailure) send({ type: "error", status: err.status, error: err.body });
+          else {
+            console.error(err);
+            send({ type: "error", status: 500, error: { code: "agent_unavailable", message: "Something went wrong. Please try again." } });
+          }
+        }
+        controller.close();
+      },
+    });
+    return new Response(body, {
+      headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" },
     });
   });
 
@@ -331,6 +381,8 @@ export function createApp(deps: AppDeps) {
     mutateSession(c, (session) => {
       session.state.cart = emptyCart();
       session.state.pendingChoice = null;
+      session.state.pendingConfirm = null;
+      session.state.pendingOffers = [];
     }),
   );
 

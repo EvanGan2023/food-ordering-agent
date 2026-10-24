@@ -5,6 +5,7 @@ import type {
   Health,
   Menu,
   MessageResponse,
+  MessageStreamEvent,
   Order,
   OrderStatus,
   PaymentMethod,
@@ -38,18 +39,65 @@ async function request<T>(method: "GET" | "POST" | "PUT", path: string, body?: u
       cache: "no-store",
     });
   } catch {
-    throw new ApiRequestError({ code: "network", message: "Can't reach the ordering server." }, 0);
+    throw offline();
   }
 
   const data: unknown = await res.json().catch(() => null);
-  if (!res.ok) {
-    const error =
-      data && typeof data === "object" && "error" in data && data.error && typeof data.error === "object"
-        ? (data.error as ClientError)
-        : ({ code: "network", message: `Server error (${res.status}).` } as const);
-    throw new ApiRequestError(error, res.status);
-  }
+  if (!res.ok) throw failure(res.status, data);
   return data as T;
+}
+
+function failure(status: number, data: unknown): ApiRequestError {
+  const error =
+    data && typeof data === "object" && "error" in data && data.error && typeof data.error === "object"
+      ? (data.error as ClientError)
+      : ({ code: "network", message: `Server error (${status}).` } as const);
+  return new ApiRequestError(error, status);
+}
+
+const offline = () => new ApiRequestError({ code: "network", message: "Can't reach the ordering server." }, 0);
+
+/** Runs the agent, passing on the reply as it's written; resolves once the turn is saved. */
+async function messageStream(
+  id: string,
+  text: string,
+  onReply: (event: Extract<MessageStreamEvent, { type: "text" | "restart" }>) => void,
+): Promise<MessageResponse> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/sessions/${enc(id)}/message/stream`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+      cache: "no-store",
+    });
+  } catch {
+    throw offline();
+  }
+  if (!res.ok || !res.body) throw failure(res.status, await res.json().catch(() => null));
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffered = "";
+  for (;;) {
+    let chunk: ReadableStreamReadResult<string>;
+    try {
+      chunk = await reader.read();
+    } catch {
+      throw offline();
+    }
+    if (chunk.done) throw offline(); // the stream ended without "done"
+    buffered += chunk.value;
+    let newline: number;
+    while ((newline = buffered.indexOf("\n")) >= 0) {
+      const line = buffered.slice(0, newline).trim();
+      buffered = buffered.slice(newline + 1);
+      if (!line) continue;
+      const event = JSON.parse(line) as MessageStreamEvent;
+      if (event.type === "done") return { reply: event.reply, session: event.session };
+      if (event.type === "error") throw new ApiRequestError(event.error, event.status);
+      onReply(event);
+    }
+  }
 }
 
 const enc = encodeURIComponent;
@@ -63,6 +111,7 @@ export const api = {
   createSession: (channel: Channel) => request<SessionView>("POST", "/sessions", { channel }),
   session: (id: string) => request<SessionView>("GET", `/sessions/${enc(id)}`),
   message: (id: string, text: string) => request<MessageResponse>("POST", `/sessions/${enc(id)}/message`, { text }),
+  messageStream,
   addItem: (id: string, input: AddItemInput) => request<SessionView>("POST", `/sessions/${enc(id)}/cart/add`, input),
   updateLine: (id: string, lineId: string, changes: { qty?: number; modifiers?: Selections }) =>
     request<SessionView>("POST", `/sessions/${enc(id)}/cart/update`, { lineId, ...changes }),
@@ -87,7 +136,7 @@ export const api = {
   },
 };
 
-/** Streams as audio/mpeg, so it can be used directly as an <audio> source. */
+/** The reply as speech: streamed WAV from Kokoro, MP3 from ElevenLabs. */
 export const speakUrl = (text: string) => `/api/speech/speak?text=${enc(text.slice(0, 600))}`;
 
 export function errorCode(err: unknown): ClientError["code"] | "unknown" {
@@ -104,13 +153,13 @@ export function describeError(err: unknown): string {
     case "speech_unavailable":
       return e.message;
     case "agent_unavailable":
-      return "The ordering assistant is offline right now. You can still order by tapping the menu.";
+      return "The ordering assistant is offline right now. Please order at the counter.";
     case "out_of_stock":
       return `${e.name} is sold out right now.`;
     case "unavailable_now":
       return `${e.name} is only available ${e.availability.start}–${e.availability.end}.`;
     case "missing_choice":
-      return `Choose ${e.groupName.toLowerCase()} first.`;
+      return `Choose ${e.groups.map((g) => g.groupName.toLowerCase()).join(", ")} first.`;
     case "too_many_choices":
       return `You can pick up to ${e.max} for that option.`;
     case "invalid_quantity":

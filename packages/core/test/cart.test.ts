@@ -32,10 +32,18 @@ describe("addItem", () => {
     const result = addItem(emptyCart(), demoMenu, { itemId: "cheeseburger-meal" }, AFTERNOON);
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toMatchObject({ code: "missing_choice", groupId: "meal-drink", groupName: "Meal drink" });
+    expect(result.error).toMatchObject({ code: "missing_choice", groups: [{ groupId: "meal-drink", groupName: "Meal drink" }] });
     if (result.error.code === "missing_choice") {
-      expect(result.error.options.map((o) => o.id)).toContain("cola-zero");
+      expect(result.error.groups[0]!.options.map((o) => o.id)).toContain("cola-zero");
     }
+  });
+
+  it("asks for every missing required choice at once", () => {
+    const result = addItem(emptyCart(), demoMenu, { itemId: "kids-pack" }, AFTERNOON);
+    expect(!result.ok && result.error.code === "missing_choice" && result.error.groups.map((g) => g.groupId)).toEqual([
+      "kids-main",
+      "kids-drink",
+    ]);
   });
 
   it("rejects items that aren't on the menu", () => {

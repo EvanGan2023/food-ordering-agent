@@ -5,6 +5,8 @@ import { z } from "zod";
 export const ModifierOption = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  /** Other ways customers say it ("half sugar" for "50% sugar"). Counts as naming the option exactly. */
+  aliases: z.array(z.string()).default([]),
   priceDelta: z.number().int().default(0),
   default: z.boolean().default(false),
 });
@@ -14,6 +16,8 @@ export const ModifierGroup = z.object({
   name: z.string().min(1),
   min: z.number().int().min(0),
   max: z.number().int().min(1),
+  /** For an optional group (min 0), such as toppings: the agent offers it once when the item is ordered without it. */
+  offer: z.boolean().default(false),
   options: z.array(ModifierOption).min(1),
 });
 
@@ -35,6 +39,8 @@ export const MenuItem = z.object({
   // Allergen data comes only from the menu. The agent must never invent it.
   allergens: z.array(z.string()).default([]),
   modifierGroupIds: z.array(z.string()).default([]),
+  /** The meal version of this item; the agent offers it when the customer orders the item on its own. */
+  mealItemId: z.string().optional(),
   inStock: z.boolean().default(true),
   availability: Availability.optional(),
 });

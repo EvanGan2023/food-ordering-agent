@@ -15,7 +15,16 @@ Open-source AI ordering agent for restaurants. Customers say or type what they w
 - **Your voice**: in owner settings, set how long replies are (short, medium or detailed), whether the assistant says prices, and a "house style" in your own words (tone, greetings, a line to mention). The ordering rules always come first.
 - **Kitchen screen**: a stand-in for the POS while testing.
 - **Pluggable AI**: Anthropic (default), OpenAI or OpenRouter, using the restaurant's own key.
-- **Voice**: listening uses the browser's speech recognition (free) or ElevenLabs Scribe. Spoken replies come from Kokoro, a free open-source voice that runs on your own server (`TTS_PROVIDER=kokoro`), or from ElevenLabs Flash.
+- **Voice**: listening uses the browser's speech recognition (free; in Chrome the browser sends the audio to Google for recognition) or ElevenLabs Scribe. Spoken replies come from Kokoro, a free open-source voice that runs on your own server (`TTS_PROVIDER=kokoro`), or from ElevenLabs Flash.
+
+## Stack
+
+- **AI**: Claude Haiku by default, via the AI SDK; OpenAI or OpenRouter also work. The model only changes the order through validated tools.
+- **Speech to text**: the browser's built-in speech recognition (free), or ElevenLabs Scribe.
+- **Text to speech**: [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a free open-source voice model that runs locally on the server's CPU, or ElevenLabs Flash.
+- **Database**: embedded Postgres (PGlite) locally with no setup; [Supabase](https://supabase.com) or any Postgres in production.
+- **POS**: built-in kitchen screen, or Square (experimental).
+- **Code**: TypeScript monorepo (pnpm): Hono API, Next.js web app, Zod.
 
 ## Quick start
 
@@ -23,7 +32,7 @@ Requires Node 22+ and pnpm.
 
 ```sh
 pnpm install
-cp .env.example .env    # add ANTHROPIC_API_KEY for the agent, ELEVENLABS_API_KEY for voice
+cp .env.example .env    # add ANTHROPIC_API_KEY for the agent; set TTS_PROVIDER=kokoro for free spoken replies
 pnpm dev
 ```
 
@@ -38,7 +47,7 @@ Then open:
 | Owner settings | http://localhost:3000/admin |
 | Embed example | http://localhost:3000/embed-demo |
 
-The ordering screens are agent-only, so they need an API key to take orders; without one they show "assistant offline" (the kitchen screen and owner settings still work). Without an ElevenLabs key, the mic uses the browser's speech recognition (Chrome or Safari) and replies are text only. Restart `pnpm dev` after editing `.env`.
+The ordering screens are agent-only, so they need an API key to take orders; without one they show "assistant offline" (the kitchen screen and owner settings still work). Voice needs no paid account: the mic uses the browser's speech recognition (Chrome or Safari) and, with `TTS_PROVIDER=kokoro`, replies are spoken by Kokoro running on your own server (the ~90 MB model downloads on first start). Add `ELEVENLABS_API_KEY` to use ElevenLabs instead. Restart `pnpm dev` after editing `.env`.
 
 Locally, data is stored in an embedded Postgres (PGlite) under `.data/`. Delete that folder to reset.
 

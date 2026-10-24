@@ -9,6 +9,8 @@ export const ModifierOption = z.object({
   aliases: z.array(z.string()).default([]),
   priceDelta: z.number().int().default(0),
   default: z.boolean().default(false),
+  /** The POS's id for this option (a Square modifier, or an item variation when the group is `posVariations`). */
+  posId: z.string().optional(),
 });
 
 export const ModifierGroup = z.object({
@@ -18,6 +20,8 @@ export const ModifierGroup = z.object({
   max: z.number().int().min(1),
   /** For an optional group (min 0), such as toppings: the agent offers it once when the item is ordered without it. */
   offer: z.boolean().default(false),
+  /** The options are the POS's item variations (e.g. Square sizes): the chosen one is the item sent to the POS. Pick exactly one. */
+  posVariations: z.boolean().default(false),
   options: z.array(ModifierOption).min(1),
 });
 
@@ -43,6 +47,8 @@ export const MenuItem = z.object({
   mealItemId: z.string().optional(),
   inStock: z.boolean().default(true),
   availability: Availability.optional(),
+  /** The POS's id for this item (a Square item variation) when it has no `posVariations` group. */
+  posId: z.string().optional(),
 });
 
 export const Category = z.object({

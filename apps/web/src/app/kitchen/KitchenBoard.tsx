@@ -165,6 +165,12 @@ function Ticket({
         </dl>
       )}
 
+      {order.pos?.error && (
+        <p role="alert" className="mt-3 rounded-lg border-2 border-alert bg-alert-soft px-2 py-1.5 text-sm text-alert">
+          <span className="font-bold">Not in {order.pos.name === "square" ? "Square" : "the POS"}:</span> {order.pos.error}
+        </p>
+      )}
+
       {order.status === "awaiting_payment" ? (
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className="text-sm text-char-soft">Code {order.pickupCode}</span>

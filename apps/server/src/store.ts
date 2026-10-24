@@ -111,6 +111,13 @@ export class Store {
     return updated;
   }
 
+  /** Saves changes to an order other than its status, e.g. its POS reference. */
+  async saveOrder(order: Order): Promise<Order> {
+    const updated: Order = { ...order, updatedAt: new Date().toISOString() };
+    await this.db.query("UPDATE orders SET data = $2, updated_at = $3 WHERE id = $1", [order.id, JSON.stringify(updated), updated.updatedAt]);
+    return updated;
+  }
+
   /** A 4-digit code no unpaid order is using right now. */
   private async uniquePickupCode(): Promise<string> {
     for (let attempt = 0; attempt < 20; attempt++) {

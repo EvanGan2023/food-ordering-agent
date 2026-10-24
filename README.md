@@ -2,7 +2,7 @@
 
 Open-source AI ordering agent for restaurants. Customers say or type what they want, the agent builds the order from the restaurant's menu, asks only for missing choices and the owner's questions, and the order goes to the kitchen.
 
-> Status: early MVP. Runs locally with a fictional demo restaurant and a built-in kitchen screen. Square integration is next.
+> Status: early MVP. Runs locally with fictional demo restaurants and a built-in kitchen screen. Square integration is **experimental**: built and unit-tested against mocked Square responses, not yet tested against a live Square Sandbox.
 
 ## What's in it
 
@@ -88,6 +88,25 @@ How a menu tells the agent what to ask:
 | Option `aliases` | Other ways customers say it ("half sugar" for "50% sugar"); they count as the exact words, so no "did you mean". |
 
 `evals/demo-orders.json` and `evals/tea-orders.json` pair customer sentences and short conversations with the cart the agent should build.
+
+## Square (experimental)
+
+> Not yet tested against a live Square Sandbox; the code is covered by unit tests with mocked Square responses. Reports from anyone who tries it are very welcome.
+
+Orders can go to a restaurant's Square point of sale. Try it with a free Square **Sandbox** first (fake money, no real restaurant needed):
+
+1. Sign up at [developer.squareup.com](https://developer.squareup.com), create an application, and open its **Sandbox** tab.
+2. Put the Sandbox **access token** and a **location ID** (Locations page) in `.env` as `SQUARE_ACCESS_TOKEN` and `SQUARE_LOCATION_ID`.
+3. Fill the empty Sandbox with a demo menu: `pnpm --filter @foa/server square:seed` (add `bubble-tea` for the tea shop; `--reset` replaces what's there).
+4. Set `MENU_SOURCE=square` and restart `pnpm dev`. The agent now orders from the Square catalog; `pnpm --filter @foa/server square:menu` shows how it was read.
+
+How it maps:
+
+- Square items become menu items. An item with several variations (Small, Large) gets a pick-one "Size" choice; modifier lists become choices with their min/max (per-item overrides included). Sold-out variations and modifiers at the location are left out, and items with variable pricing are skipped.
+- At checkout the order is created in Square with a pickup fulfilment, the customer's name and the kitchen notes. Square only shows API orders to staff once they're paid, so the payment is recorded when the order is paid: straight away for kiosk and online, or when staff take payment for pay-at-counter orders.
+- If Square fails, the order still goes through and shows on our kitchen screen with a "Not in Square" warning.
+
+Still to come: card payments (online, with Square's Web Payments SDK) and Square Terminal at the kiosk (payments are recorded as external until then), order status from Square back to our screens, and "Connect with Square" for restaurants without copying tokens. Square's catalog has no aliases, offers or allergens, so those can't come from Square yet.
 
 ## Layout
 

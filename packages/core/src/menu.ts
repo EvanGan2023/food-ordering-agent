@@ -56,6 +56,9 @@ export function validateMenu(menu: Menu): string[] {
       }
     }
     if (group.offer && group.min > 0) problems.push(`group "${group.id}": only optional groups (min 0) can be offered`);
+    if (group.posVariations && (group.min !== 1 || group.max !== 1)) {
+      problems.push(`group "${group.id}": POS variations must be pick exactly one (min 1, max 1)`);
+    }
 
     const defaults = group.options.filter((o) => o.default).length;
     if (defaults > group.max) problems.push(`group "${group.id}": ${defaults} defaults > max ${group.max}`);
@@ -71,6 +74,8 @@ export function validateMenu(menu: Menu): string[] {
     for (const groupId of item.modifierGroupIds) {
       if (!groupIds.has(groupId)) problems.push(`item "${item.id}": unknown modifier group "${groupId}"`);
     }
+    const variationGroups = menu.modifierGroups.filter((g) => g.posVariations && item.modifierGroupIds.includes(g.id));
+    if (variationGroups.length > 1) problems.push(`item "${item.id}": more than one POS variations group`);
     if (item.mealItemId && (item.mealItemId === item.id || !menu.items.some((i) => i.id === item.mealItemId))) {
       problems.push(`item "${item.id}": unknown meal item "${item.mealItemId}"`);
     }

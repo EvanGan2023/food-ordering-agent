@@ -123,8 +123,22 @@ export interface Order {
   subtotal: number;
   currency: string;
   answers: OrderAnswer[];
+  /** The order in the restaurant's POS (e.g. Square), once it has been sent there. */
+  pos?: PosRef;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PosRef {
+  /** Which POS, e.g. "square". */
+  name: string;
+  orderId?: string;
+  /** The POS's total, which can include tax, in `currency` minor units. */
+  total?: number;
+  currency?: string;
+  paymentId?: string;
+  /** The last thing that went wrong sending the order or its payment; staff see it on the kitchen screen. */
+  error?: string;
 }
 
 /** How the assistant talks, set by the owner. */

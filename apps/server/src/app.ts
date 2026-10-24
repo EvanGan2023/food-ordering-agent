@@ -398,6 +398,21 @@ export function createApp(deps: AppDeps) {
     });
   });
 
+  /** Runs a POS step and saves its result, or its error, on the order. A POS failure never loses the order. */
+  async function syncPos(order: Order, step: "submitOrder" | "orderPaid"): Promise<Order> {
+    const run = pos[step];
+    if (!run) return order;
+    try {
+      const result = await run.call(pos, order);
+      if (!result && !order.pos) return order;
+      return store.saveOrder({ ...order, pos: { ...order.pos, ...result, name: pos.name, error: undefined } });
+    } catch (err) {
+      console.error(`${pos.name}: ${step} failed for order #${order.number}:`, err);
+      const error = err instanceof Error ? err.message : String(err);
+      return store.saveOrder({ ...order, pos: { ...order.pos, name: pos.name, error } });
+    }
+  }
+
   app.post("/sessions/:id/checkout", async (c) => {
     const { payment } = await readBody(c, bodies.checkout);
     const id = c.req.param("id");
@@ -427,12 +442,13 @@ export function createApp(deps: AppDeps) {
             sendToKitchen: q.sendToKitchen,
           })),
       });
-      await pos.submitOrder(order);
+      let sent = await syncPos(order, "submitOrder");
+      if (sent.status === "paid" && !sent.pos?.error) sent = await syncPos(sent, "orderPaid");
 
       session.status = "checked_out";
       session.orderId = order.id;
       await store.saveSession(session);
-      return c.json(order, 201);
+      return c.json(sent, 201);
     });
   });
 
@@ -453,7 +469,7 @@ export function createApp(deps: AppDeps) {
     if (order.status !== "awaiting_payment") {
       throw new ApiFailure(409, { code: "bad_request", message: "order is already paid" });
     }
-    return c.json(await store.setOrderStatus(order, "paid"));
+    return c.json(await syncPos(await store.setOrderStatus(order, "paid"), "orderPaid"));
   });
 
   app.post("/orders/:id/status", async (c) => {

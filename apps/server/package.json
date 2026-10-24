@@ -8,7 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "square:seed": "tsx scripts/square-seed.ts",
+    "square:menu": "tsx scripts/square-menu.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.11",

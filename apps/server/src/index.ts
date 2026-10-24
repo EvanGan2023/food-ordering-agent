@@ -5,7 +5,10 @@ import { createModel, modelConfigFromEnv } from "@foa/agent";
 import { demoMenu, teaMenu, type Menu } from "@foa/core";
 import { createApp } from "./app";
 import { migrate, openDb, postgresOptionsFromEnv } from "./db";
-import { kitchenScreenPos } from "./pos";
+import { kitchenScreenPos, type PosAdapter } from "./pos";
+import { createSquareClient, squareConfigFromEnv } from "./square/client";
+import { loadSquareMenu } from "./square/catalog";
+import { createSquarePos } from "./square/orders";
 import { createKokoro, kokoroConfigFromEnv } from "./kokoro";
 import { createElevenLabs, elevenLabsConfigFromEnv, type TextToSpeech } from "./speech";
 import { Store } from "./store";
@@ -16,13 +19,34 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const port = Number(process.env.PORT ?? 8787);
 
-// Which fictional demo menu to serve: DEMO_MENU=bubble-tea, or the burger shop by default.
+const squareConfig = squareConfigFromEnv();
+const square = squareConfig ? createSquareClient(squareConfig) : null;
+
+// The menu: MENU_SOURCE=square loads the restaurant's Square catalog; otherwise a fictional demo
+// menu, DEMO_MENU=bubble-tea or the burger shop by default.
 const demoMenus: Record<string, Menu> = { burger: demoMenu, "bubble-tea": teaMenu };
-const menu = demoMenus[process.env.DEMO_MENU || "burger"];
-if (!menu) {
-  console.error(`Unknown DEMO_MENU "${process.env.DEMO_MENU}". Use one of: ${Object.keys(demoMenus).join(", ")}.`);
-  process.exit(1);
+let menu: Menu;
+let skippedItems: string[] = [];
+if (process.env.MENU_SOURCE === "square") {
+  if (!square) {
+    console.error("MENU_SOURCE=square needs SQUARE_ACCESS_TOKEN and SQUARE_LOCATION_ID in .env.");
+    process.exit(1);
+  }
+  try {
+    ({ menu, skipped: skippedItems } = await loadSquareMenu(square));
+  } catch (err) {
+    console.error(`Couldn't load the menu from Square: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+} else {
+  const demo = demoMenus[process.env.DEMO_MENU || "burger"];
+  if (!demo) {
+    console.error(`Unknown DEMO_MENU "${process.env.DEMO_MENU}". Use one of: ${Object.keys(demoMenus).join(", ")}.`);
+    process.exit(1);
+  }
+  menu = demo;
 }
+const pos: PosAdapter = square ? createSquarePos(square, menu) : kitchenScreenPos;
 
 const postgres = postgresOptionsFromEnv();
 const db = await openDb({ postgres, dataDir: `${repoRoot}.data/pglite` });
@@ -39,11 +63,13 @@ const kokoroConfig = kokoroConfigFromEnv();
 const kokoro = kokoroConfig ? createKokoro(kokoroConfig) : null;
 const tts: TextToSpeech | null = kokoro ?? eleven;
 
-const app = createApp({ store: new Store(db), menu, pos: kitchenScreenPos, model, stt: eleven, tts, log: true });
+const app = createApp({ store: new Store(db), menu, pos, model, stt: eleven, tts, log: true });
 
 serve({ fetch: app.fetch, port }, () => {
   console.log(`API ready on http://localhost:${port}/api`);
-  console.log(`Menu: ${menu.name}`);
+  console.log(`Menu: ${menu.name}${process.env.MENU_SOURCE === "square" ? ` (from Square, ${menu.items.length} items)` : ""}`);
+  for (const skipped of skippedItems) console.log(`  skipped ${skipped}`);
+  console.log(square ? `Orders: Square ${squareConfig!.environment} (location ${squareConfig!.locationId})` : "Orders: kitchen screen only");
   console.log(
     `Database: ${postgres ? `Postgres at ${new URL(postgres.url).hostname}${postgres.caFile ? " (verified SSL)" : ""}` : "embedded PGlite in .data/"}`,
   );

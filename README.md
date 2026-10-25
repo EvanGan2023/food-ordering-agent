@@ -2,7 +2,9 @@
 
 Open-source AI ordering agent for restaurants. Customers say or type what they want, the agent builds the order from the restaurant's menu, asks only for missing choices and the owner's questions, and the order goes to the kitchen.
 
-> Status: early MVP. Runs locally with fictional demo restaurants and a built-in kitchen screen. ElevenLabs voice (speech to text and spoken replies) is tested with a live key. Square integration is **experimental**: unit-tested, and tested against a live Square Sandbox (catalog import, orders, payments, taxes), but not yet in a real restaurant.
+The problem: long queues at the counter, and kiosks where customers scroll through a big menu panel to find what they want. Here they just say it, and the order is built for them.
+
+> Status: runs locally with fictional demo restaurants and a built-in kitchen screen. ElevenLabs voice is tested with a live key. Square is tested in the Square Developer Sandbox: menu read and write, orders, payments and taxes.
 
 ## What's in it
 
@@ -23,7 +25,7 @@ Open-source AI ordering agent for restaurants. Customers say or type what they w
 - **Speech to text**: the browser's built-in speech recognition (free), or ElevenLabs Scribe.
 - **Text to speech**: [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a free open-source voice model that runs locally on the server's CPU, or ElevenLabs Flash.
 - **Database**: embedded Postgres (PGlite) locally with no setup; [Supabase](https://supabase.com) or any Postgres in production.
-- **POS**: built-in kitchen screen, or Square (experimental).
+- **POS**: built-in kitchen screen, or Square.
 - **Code**: TypeScript monorepo (pnpm): Hono API, Next.js web app, Zod.
 
 ## Quick start
@@ -98,25 +100,23 @@ How a menu tells the agent what to ask:
 
 `evals/demo-orders.json` and `evals/tea-orders.json` pair customer sentences and short conversations with the cart the agent should build.
 
-## Square (experimental)
+## Square
 
-> Tested against a Square Sandbox (catalog import, orders, payments, taxes included in prices and added on top), not yet in a real restaurant. Reports from anyone who tries it are very welcome.
+Orders can go to a restaurant's Square point of sale. We've tested this in the Square Developer Sandbox (menu read and write, orders, payments, taxes), but test it in your own Sandbox, then with your live account, before taking real orders.
 
-Orders can go to a restaurant's Square point of sale. Try it with a free Square **Sandbox** first (fake money, no real restaurant needed):
+1. At [developer.squareup.com](https://developer.squareup.com), create an application and open its **Sandbox** tab.
+2. Put the Sandbox **access token** and a **location ID** in `.env` as `SQUARE_ACCESS_TOKEN` and `SQUARE_LOCATION_ID`.
+3. Fill the Sandbox with a demo menu: `pnpm --filter @foa/server square:seed` (add `bubble-tea` for the tea shop, `--reset` to replace what's there).
+4. Set `MENU_SOURCE=square` and restart `pnpm dev`. `pnpm --filter @foa/server square:menu` shows how the menu was read.
 
-1. Sign up at [developer.squareup.com](https://developer.squareup.com), create an application, and open its **Sandbox** tab.
-2. Put the Sandbox **access token** and a **location ID** (Locations page) in `.env` as `SQUARE_ACCESS_TOKEN` and `SQUARE_LOCATION_ID`.
-3. Fill the empty Sandbox with a demo menu: `pnpm --filter @foa/server square:seed` (add `bubble-tea` for the tea shop; `--reset` replaces what's there).
-4. Set `MENU_SOURCE=square` and restart `pnpm dev`. The agent now orders from the Square catalog; `pnpm --filter @foa/server square:menu` shows how it was read.
+How it works:
 
-How it maps:
+- **Menu**: Square items, variations (as a Size choice) and modifier lists become the agent's menu. Sold-out and variable-price items are left out.
+- **Orders and payments**: each order is created in Square as a pickup with the customer's name and kitchen notes, and its payment is recorded once paid (straight away online and at the kiosk, or when staff take payment at the counter).
+- **Taxes**: Square applies the seller's taxes. Tax added on top of prices (e.g. US sales tax) is shown in the total before paying.
+- **If Square is down**, the order still goes through and shows on our kitchen screen with a warning.
 
-- Square items become menu items. An item with several variations (Small, Large) gets a pick-one "Size" choice; modifier lists become choices with their min/max (per-item overrides included). Sold-out variations and modifiers at the location are left out, and items with variable pricing are skipped.
-- At checkout the order is created in Square with a pickup fulfilment, the customer's name and the kitchen notes. Square only shows API orders to staff once they're paid, so the payment is recorded when the order is paid: straight away for kiosk and online, or when staff take payment for pay-at-counter orders.
-- Taxes stay in Square: it applies the seller's taxes to each order. Tax included in prices (e.g. GST) changes nothing for the customer. Tax added on top (e.g. US sales tax) is priced by Square as the cart changes and shown as "incl. tax" in the total, and the agent says totals are plus tax.
-- If Square fails, the order still goes through and shows on our kitchen screen with a "Not in Square" warning.
-
-Still to come: card payments (online, with Square's Web Payments SDK) and Square Terminal at the kiosk (payments are recorded as external until then), order status from Square back to our screens, and "Connect with Square" for restaurants without copying tokens. Square's catalog has no aliases, offers or allergens, so those can't come from Square yet.
+Not yet: card and Square Terminal payments (payments are recorded as external), order status back from Square, and "Connect with Square". Square's catalog has no aliases or allergens, so those can't come from Square.
 
 ## Layout
 
@@ -135,3 +135,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY
 ## Licence
 
 [Apache-2.0](LICENSE)
+
+## Screenshots
+
+The agent confirms a guess before adding it ("Coke" isn't on the menu, so it asks about Cola):
+
+![Agent asking "Did you mean…?" with Yes and No buttons](docs/screenshots/order-confirm.png)
+
+The live order card, with the owner's order questions:
+
+![Order card with a Cheeseburger Meal and order questions](docs/screenshots/order-card.png)
+
+The kitchen screen (a stand-in for the POS):
+
+![Kitchen screen with order tickets](docs/screenshots/kitchen.png)

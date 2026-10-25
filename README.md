@@ -91,6 +91,12 @@ Speech-to-text gets words wrong by sound ("terror milk tea" for "taro milk tea",
    - **Sound**: each phrase becomes a rough code of how it sounds (a simplified Metaphone: sounds spelled differently share a letter, easily confused pairs like b/p and d/t are merged, silent letters are dropped), so "terror" and "taro" get the same code. Sound scores count slightly less than spelling, and very short codes are trusted less.
 3. **A close match (score 0.77 or more) is only a suggestion.** The agent asks "Did you mean…?" with Yes/No buttons, and nothing is added until the customer says yes.
 
+   The score is set to 0.77 by default (`HEARD_AS_MIN` in `packages/core/src/match.ts`). You can lower or raise it:
+   - **Lower it** (e.g. 0.7) for noisy counters, strong accents or unusual menu names that speech-to-text often gets wrong. The agent catches more mishearings, but also suggests unrelated items more often.
+   - **Raise it** (e.g. 0.85) for menus with many similar names (Cola / Cola Zero) or customers who mostly type. Fewer wrong suggestions, but more misheard words are missed and the agent asks the customer to say it again.
+
+   After changing it, run `pnpm test` and the agent eval below to check nothing else moved.
+
 With voice, the browser's speech recognition gives several possible transcripts; the one with the most exact menu words is used.
 
 ## Evals: how well the agent orders

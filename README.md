@@ -1,6 +1,6 @@
 # Food Ordering Agent
 
-Open-source AI ordering agent for restaurants. Customers say or type what they want, the agent builds the order from the restaurant's menu, asks only for missing choices and the owner's questions, and the order goes to the kitchen.
+Open-source AI ordering agent for restaurants. Works on an in-store kiosk and for ordering from a phone. Customers say or type what they want, the agent builds the order from the restaurant's menu, asks only for missing choices and the owner's questions, and the order goes to the kitchen.
 
 The problem: long queues at the counter, and kiosks where customers scroll through a big menu panel to find what they want. Here they just say it, and the order is built for them.
 
@@ -57,19 +57,11 @@ Locally, data is stored in an embedded Postgres (PGlite) under `.data/`. Delete 
 
 For a real restaurant, use [Supabase](https://supabase.com) (hosted Postgres with a free plan). It holds the owner's settings, in-progress orders and placed orders, so nothing is lost when the server restarts or redeploys.
 
-1. Create a Supabase project and choose the region closest to the restaurant.
-2. Open **Connect** and copy the **Session pooler** connection string. It works on IPv4 networks and suits a long-running server. Put your database password in it.
-3. Download the CA certificate from **Project settings → Database → SSL configuration**.
-4. In `.env`, set the connection string and the certificate's location:
-   ```sh
-   DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
-   DATABASE_SSL_CA=/path/to/prod-ca-2021.crt
-   ```
-5. Restart the server. It creates its tables on first start and logs `Postgres at …pooler.supabase.com (verified SSL)`.
+1. **Sign up** at [supabase.com](https://supabase.com), click **New project**, and choose the region closest to the restaurant.
+2. **Connect it**: in the project, open **Connect**, copy the **Session pooler** connection string (with your database password), and put it in `.env` as `DATABASE_URL`.
+3. **Create the tables: run `pnpm dev` once.** That's all. On start, the server creates its tables in your new database (`settings`, `sessions`, `orders`), so there's no SQL to run. They then appear in Supabase's **Table Editor**.
 
-Without `DATABASE_SSL_CA`, add `?sslmode=require` to the URL instead. The connection is still encrypted, but the server's identity isn't checked.
-
-The tables turn on row-level security, so Supabase's public REST API can't read orders or settings. Only this server, which connects as the database owner, can. Any Postgres server works the same way via `DATABASE_URL`.
+The connection is always encrypted. The tables turn on row-level security, so Supabase's public REST API can't read orders or settings. Only this server, which connects as the database owner, can. Any Postgres server works the same way via `DATABASE_URL`.
 
 ## Commands
 

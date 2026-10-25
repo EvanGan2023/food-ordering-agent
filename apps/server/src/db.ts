@@ -16,15 +16,21 @@ export interface PostgresOptions {
   poolMax?: number;
 }
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 /** Pool settings for a Postgres server such as Supabase. */
 export function postgresConfig(options: PostgresOptions): pg.PoolConfig {
   const config: pg.PoolConfig = { connectionString: options.url, max: options.poolMax ?? 5 };
+  const url = new URL(options.url);
   if (options.caFile) {
     // An explicit `ssl` object replaces any sslmode in the URL, so drop it to avoid a conflict.
-    const url = new URL(options.url);
     url.searchParams.delete("sslmode");
     config.connectionString = url.toString();
     config.ssl = { ca: readFileSync(options.caFile, "utf8"), rejectUnauthorized: true };
+  } else if (!url.searchParams.has("sslmode") && !LOCAL_HOSTS.has(url.hostname)) {
+    // A remote database with no SSL setting (e.g. Supabase's copied string): encrypt anyway.
+    // Without the CA certificate the traffic is hidden but the server's identity isn't checked.
+    config.ssl = { rejectUnauthorized: false };
   }
   return config;
 }

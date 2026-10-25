@@ -32,6 +32,13 @@ describe("postgresConfig", () => {
     expect(config.connectionString).toContain("sslmode=require");
   });
 
+  it("encrypts a remote database the URL says nothing about, but not a local one", () => {
+    expect(postgresConfig({ url: SUPABASE }).ssl).toEqual({ rejectUnauthorized: false });
+    expect(postgresConfig({ url: "postgresql://postgres:pw@localhost:5432/foa" }).ssl).toBeUndefined();
+    expect(postgresConfig({ url: "postgresql://postgres:pw@127.0.0.1/foa" }).ssl).toBeUndefined();
+    expect(postgresConfig({ url: `${SUPABASE}?sslmode=disable` }).ssl).toBeUndefined();
+  });
+
   it("verifies the server against the given CA certificate", () => {
     const dir = mkdtempSync(join(tmpdir(), "foa-ca-"));
     const caFile = join(dir, "ca.crt");

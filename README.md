@@ -2,7 +2,7 @@
 
 Open-source AI ordering agent for restaurants. Customers say or type what they want, the agent builds the order from the restaurant's menu, asks only for missing choices and the owner's questions, and the order goes to the kitchen.
 
-> Status: early MVP. Runs locally with fictional demo restaurants and a built-in kitchen screen. Square integration is **experimental**: built and unit-tested against mocked Square responses, not yet tested against a live Square Sandbox.
+> Status: early MVP. Runs locally with fictional demo restaurants and a built-in kitchen screen. ElevenLabs voice (speech to text and spoken replies) is tested with a live key. Square integration is **experimental**: unit-tested, and tested against a live Square Sandbox (catalog import, orders, payments, taxes), but not yet in a real restaurant.
 
 ## What's in it
 
@@ -36,16 +36,16 @@ cp .env.example .env    # add ANTHROPIC_API_KEY for the agent; set TTS_PROVIDER=
 pnpm dev
 ```
 
-Then open:
+Then open the web app (the start page links to everything):
 
-| Page | URL |
+| Page | Path |
 | --- | --- |
-| Start page | http://localhost:3000 |
-| Ordering link | http://localhost:3000/order/demo |
-| Kiosk (portrait) | http://localhost:3000/kiosk |
-| Kitchen screen | http://localhost:3000/kitchen |
-| Owner settings | http://localhost:3000/admin |
-| Embed example | http://localhost:3000/embed-demo |
+| Start page | `/` |
+| Ordering link | `/order/demo` |
+| Kiosk (portrait) | `/kiosk` |
+| Kitchen screen | `/kitchen` |
+| Owner settings | `/admin` |
+| Embed example | `/embed-demo` |
 
 The ordering screens are agent-only, so they need an API key to take orders; without one they show "assistant offline" (the kitchen screen and owner settings still work). Voice needs no paid account: the mic uses the browser's speech recognition (Chrome or Safari) and, with `TTS_PROVIDER=kokoro`, replies are spoken by Kokoro running on your own server (the ~90 MB model downloads on first start). Add `ELEVENLABS_API_KEY` to use ElevenLabs instead. Restart `pnpm dev` after editing `.env`.
 
@@ -100,7 +100,7 @@ How a menu tells the agent what to ask:
 
 ## Square (experimental)
 
-> Not yet tested against a live Square Sandbox; the code is covered by unit tests with mocked Square responses. Reports from anyone who tries it are very welcome.
+> Tested against a Square Sandbox (catalog import, orders, payments, taxes included in prices and added on top), not yet in a real restaurant. Reports from anyone who tries it are very welcome.
 
 Orders can go to a restaurant's Square point of sale. Try it with a free Square **Sandbox** first (fake money, no real restaurant needed):
 
@@ -113,6 +113,7 @@ How it maps:
 
 - Square items become menu items. An item with several variations (Small, Large) gets a pick-one "Size" choice; modifier lists become choices with their min/max (per-item overrides included). Sold-out variations and modifiers at the location are left out, and items with variable pricing are skipped.
 - At checkout the order is created in Square with a pickup fulfilment, the customer's name and the kitchen notes. Square only shows API orders to staff once they're paid, so the payment is recorded when the order is paid: straight away for kiosk and online, or when staff take payment for pay-at-counter orders.
+- Taxes stay in Square: it applies the seller's taxes to each order. Tax included in prices (e.g. GST) changes nothing for the customer. Tax added on top (e.g. US sales tax) is priced by Square as the cart changes and shown as "incl. tax" in the total, and the agent says totals are plus tax.
 - If Square fails, the order still goes through and shows on our kitchen screen with a "Not in Square" warning.
 
 Still to come: card payments (online, with Square's Web Payments SDK) and Square Terminal at the kiosk (payments are recorded as external until then), order status from Square back to our screens, and "Connect with Square" for restaurants without copying tokens. Square's catalog has no aliases, offers or allergens, so those can't come from Square yet.

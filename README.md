@@ -116,8 +116,6 @@ How it works:
 - **Taxes**: Square applies the seller's taxes. Tax added on top of prices (e.g. US sales tax) is shown in the total before paying.
 - **If Square is down**, the order still goes through and shows on our kitchen screen with a warning.
 
-Not yet: card and Square Terminal payments (payments are recorded as external), order status back from Square, and "Connect with Square". Square's catalog has no aliases or allergens, so those can't come from Square.
-
 ## Layout
 
 ```

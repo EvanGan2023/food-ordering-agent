@@ -57,7 +57,7 @@ Locally, data is stored in an embedded Postgres (PGlite) under `.data/`. Delete 
 
 For a real restaurant, use [Supabase](https://supabase.com) (hosted Postgres with a free plan). It holds the owner's settings, in-progress orders and placed orders, so nothing is lost when the server restarts or redeploys.
 
-1. **Sign up** at [supabase.com](https://supabase.com), click **New project**, and choose the region closest to the restaurant.
+1. **Sign up** at [supabase.com](https://supabase.com), click **New project**, and choose the region closest to the restaurant. If you work with an AI assistant, feel free to add the [Supabase MCP server](https://supabase.com/docs/guides/getting-started/mcp) so it can create and check the project for you.
 2. **Connect it**: in the project, open **Connect**, copy the **Session pooler** connection string (with your database password), and put it in `.env` as `DATABASE_URL`.
 3. **Create the tables: run `pnpm dev` once.** That's all. On start, the server creates its tables in your new database (`settings`, `sessions`, `orders`), so there's no SQL to run. They then appear in Supabase's **Table Editor**.
 

@@ -81,6 +81,33 @@ pnpm --filter @foa/agent eval     # grade the real AI agent on both demo menus (
 pnpm --filter @foa/agent eval bubble-tea   # just one menu; EVAL_VERBOSE=1 prints every conversation
 ```
 
+## Misheard and mistyped orders
+
+Speech-to-text gets words wrong by sound ("terror milk tea" for "taro milk tea", "chikken" for "chicken"), and typing gets them wrong by spelling. The matching in `packages/core` (`match.ts`, `phonetic.ts`) handles both, and it never adds a guess on its own:
+
+1. **Exact words go straight in.** A menu name, or an alias the owner added ("half sugar"), is added without asking.
+2. **Anything else is scored against the menu**, two ways, and the closer one counts:
+   - **Spelling**: edit distance, ignoring spaces, so "cheese burgr" is close to "cheeseburger".
+   - **Sound**: each phrase becomes a rough code of how it sounds (a simplified Metaphone: sounds spelled differently share a letter, easily confused pairs like b/p and d/t are merged, silent letters are dropped), so "terror" and "taro" get the same code. Sound scores count slightly less than spelling, and very short codes are trusted less.
+3. **A close match (score 0.77 or more) is only a suggestion.** The agent asks "Did you mean…?" with Yes/No buttons, and nothing is added until the customer says yes.
+
+With voice, the browser's speech recognition gives several possible transcripts; the one with the most exact menu words is used.
+
+## Evals: how well the agent orders
+
+Two layers:
+
+- **Unit tests** (`pnpm test`, no API key, run in CI): the cart engine, the matching above, and every expected cart in the eval files (valid on the menu and priced right).
+- **Agent eval** (`pnpm --filter @foa/agent eval`, needs a key): runs the real model on 53 cases from `evals/demo-orders.json` (burgers) and `evals/tea-orders.json` (bubble tea):
+
+| Kind | Cases | Passes when |
+|---|---|---|
+| One-sentence orders | 30 | The cart matches exactly (defaults applied). |
+| Misheard orders | 12 | Nothing guessed is added before the customer says yes, then the right cart is built. |
+| Conversations | 11 | After each turn: the cart, the choices asked, the offers made, and the reply (length, what it mentions, no prices nobody asked for). |
+
+It prints PASS or FAIL for each case with how long it took (and the agent's tool calls when it fails), then a score per menu, e.g. `Patty & Co. (burgers): 22/22 orders`. It exits with an error if any case fails, so it can run in CI with a key. Use it to compare models or prompt changes, and add a case whenever ordering behaviour changes.
+
 ## Demo menus
 
 Both are fictional; all names are original, and prices (AUD) and allergens are made up for testing. Pick one with `DEMO_MENU` in `.env` (`burger`, the default, or `bubble-tea`), then restart `pnpm dev`. The restaurant name comes from the menu until you save one in owner settings.
@@ -97,8 +124,6 @@ How a menu tells the agent what to ask:
 | Optional group (`min` 0) with `offer: true` | Offers it once after the item is added ("Any toppings?"). |
 | Item with `mealItemId` | Offers the meal once when the item is ordered on its own. |
 | Option `aliases` | Other ways customers say it ("half sugar" for "50% sugar"); they count as the exact words, so no "did you mean". |
-
-`evals/demo-orders.json` and `evals/tea-orders.json` pair customer sentences and short conversations with the cart the agent should build.
 
 ## Square
 

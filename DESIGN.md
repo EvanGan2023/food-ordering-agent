@@ -2,7 +2,7 @@
 
 How the customer screens look and behave, so new work matches what's already built. This describes the current code in `apps/web/src`. If you change the design, update this file in the same PR.
 
-Product rules (agent-only screens, allergens, prices, portrait kiosk) live in `CLAUDE.md`. This file covers the visual and interaction layer on top of them.
+Product rules (agent-only screens, allergens, prices, portrait kiosk) live in `AGENTS.md`. This file covers the visual and interaction layer on top of them.
 
 ## Principles
 
@@ -232,7 +232,7 @@ These behaviours are part of the design, not implementation details:
 - Use the single-character ellipsis "…", the minus sign "−" (U+2212) and the close glyph "✕".
 - List separators: " · " inside a line on screen, ", " on dockets (receipt and kitchen).
 - Demo honesty: anything fake says so ("Pay now (demo)", "Demo POS stand-in").
-- Allergens: show only what the menu lists, and always add "please confirm with staff" (see `CLAUDE.md`).
+- Allergens: show only what the menu lists, and always add "please confirm with staff" (see `AGENTS.md`).
 
 ## Accessibility
 

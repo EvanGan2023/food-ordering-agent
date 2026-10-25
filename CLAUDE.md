@@ -23,6 +23,7 @@ pnpm --filter @foa/agent eval     # grade the real LLM on evals/*.json for both 
 - `packages/agent`: LLM agent. `actions.ts` (pure order actions), `tools.ts` (AI SDK tools wrapping them), `prompt.ts`, `run.ts`, `model.ts` (provider choice).
 - `apps/server`: Hono API under `/api`, PGlite locally, Supabase (or any Postgres) via `DATABASE_URL` in production; tables keep row-level security on, POS adapter (`pos.ts`; Square in `src/square/`: catalog ↔ menu, orders, payments), speech provider (`speech.ts`, ElevenLabs).
 - `apps/web`: Next.js pages: ordering link, kiosk, kitchen screen, owner settings, embed script. Customer screens are agent-only (no tap menu): `components/agent/` holds the orb stage, talk/type bar and live order card; `lib/use-agent-input.ts` joins mic, agent and spoken replies into one phase. Replies stream from `/message/stream` and are spoken a sentence at a time through Web Audio (`lib/speech.ts`), with the text held until the voice starts.
+- `DESIGN.md`: the customer UI design (tokens, kiosk sizing, orb phases, component patterns, copy). Follow it for any UI change and update it when a pattern changes.
 - `evals/demo-orders.json` (burger) and `evals/tea-orders.json` (bubble tea): sample orders and multi-turn conversations with expected carts; used by unit tests and the LLM eval. `DEMO_MENU` picks which menu the server serves.
 
 ## Rules that must not break

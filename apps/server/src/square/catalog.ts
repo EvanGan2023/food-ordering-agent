@@ -7,6 +7,7 @@ import type { SquareClient } from "./client";
  *   pick-one "Size" group whose options are the variations (`posVariations`).
  * - Modifier lists become modifier groups; a list's min/max can be overridden per item.
  * - Ids are readable slugs for the agent; Square's ids are kept in `posId`.
+ * - Taxes stay in Square, which applies them to orders; the menu only notes whether any are added on top of prices.
  */
 
 interface Money {
@@ -35,6 +36,7 @@ export interface CatalogObject {
     categories?: { id: string }[];
     category_id?: string;
     reporting_category?: { id: string };
+    tax_ids?: string[];
     variations?: CatalogObject[];
     modifier_list_info?: {
       modifier_list_id: string;
@@ -62,6 +64,12 @@ export interface CatalogObject {
     price_money?: Money;
     on_by_default?: boolean;
     location_overrides?: LocationOverride[];
+  };
+  tax_data?: {
+    name?: string;
+    /** ADDITIVE: added on top of the price (e.g. US sales tax). INCLUSIVE: part of the price (e.g. GST). */
+    inclusion_type?: "ADDITIVE" | "INCLUSIVE";
+    enabled?: boolean;
   };
 }
 
@@ -166,6 +174,7 @@ export function catalogToMenu(
 
   const itemId = slugger();
   const items: MenuInput["items"] = [];
+  const itemTaxIds = new Set<string>();
   for (const object of here) {
     const data = object.item_data;
     if (object.type !== "ITEM" || !data?.name || data.is_archived) continue;
@@ -179,6 +188,7 @@ export function catalogToMenu(
       skipped.push(`${data.name}: no fixed price at this location`);
       continue;
     }
+    for (const taxId of data.tax_ids ?? []) itemTaxIds.add(taxId);
     const available = variations.filter((v) => !soldOut(v.item_variation_data?.location_overrides, location.id));
     const priced = (available.length ? available : variations).map((v) => ({
       id: v.id,
@@ -234,6 +244,9 @@ export function catalogToMenu(
     name: location.business_name || location.name || "Square menu",
     currency: location.currency || currency || "AUD",
     timezone: location.timezone || "Australia/Sydney",
+    taxAddedAtCheckout: here.some(
+      (o) => o.tax_data?.inclusion_type === "ADDITIVE" && o.tax_data.enabled !== false && itemTaxIds.has(o.id),
+    ),
     categories: [...categories.values()],
     modifierGroups: [...groups.values()],
     items,
@@ -246,7 +259,7 @@ export async function fetchCatalog(client: SquareClient): Promise<CatalogObject[
   const objects: CatalogObject[] = [];
   let cursor: string | undefined;
   do {
-    const query = new URLSearchParams({ types: "ITEM,MODIFIER_LIST,CATEGORY" });
+    const query = new URLSearchParams({ types: "ITEM,MODIFIER_LIST,CATEGORY,TAX" });
     if (cursor) query.set("cursor", cursor);
     const page = await client.request<{ objects?: CatalogObject[]; cursor?: string }>("GET", `/v2/catalog/list?${query}`);
     objects.push(...(page.objects ?? []));

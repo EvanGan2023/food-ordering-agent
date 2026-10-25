@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { demoMenu, priceCart, type Order } from "@foa/core";
 import { catalogToMenu, type CatalogObject } from "../../src/square/catalog";
 import type { SquareClient } from "../../src/square/client";
-import { createSquarePos, toSquareOrder } from "../../src/square/orders";
+import { addedTax, createSquarePos, toSquareOrder } from "../../src/square/orders";
 
 const money = (amount: number) => ({ amount, currency: "AUD" });
 const location = { id: "LOC1", business_name: "Corner Cafe", currency: "AUD" };
@@ -62,7 +62,12 @@ describe("toSquareOrder", () => {
   it("sends the chosen variation as the item and options as catalog modifiers", () => {
     const square = toSquareOrder(order([{ lineId: "l1", itemId: "latte", qty: 2, modifiers: { "latte-size": ["large"], milk: ["oat"] } }]), menu, "LOC1");
     expect(square.line_items).toEqual([{ quantity: "2", catalog_object_id: "VAR_L", modifiers: [{ catalog_object_id: "MOD_OAT" }] }]);
-    expect(square).toMatchObject({ location_id: "LOC1", reference_id: "#104", source: { name: "AI ordering" } });
+    expect(square).toMatchObject({
+      location_id: "LOC1",
+      reference_id: "#104",
+      source: { name: "AI ordering" },
+      pricing_options: { auto_apply_taxes: true },
+    });
     expect(square.fulfillments).toEqual([
       {
         type: "PICKUP",
@@ -86,6 +91,30 @@ describe("toSquareOrder", () => {
   });
 });
 
+// Square's calculated order: 10% sales tax added on top, and GST already in the price.
+const calculated = {
+  taxes: [
+    { uid: "sales", type: "ADDITIVE" as const },
+    { uid: "gst", type: "INCLUSIVE" as const },
+  ],
+  line_items: [
+    {
+      applied_taxes: [
+        { tax_uid: "sales", applied_money: { amount: 90 } },
+        { tax_uid: "gst", applied_money: { amount: 82 } },
+      ],
+    },
+  ],
+};
+
+describe("addedTax", () => {
+  it("counts only tax added on top of the prices", () => {
+    expect(addedTax(calculated)).toBe(90);
+    expect(addedTax({ ...calculated, taxes: [{ uid: "sales", type: "INCLUSIVE" }, { uid: "gst", type: "INCLUSIVE" }] })).toBe(0);
+    expect(addedTax({})).toBe(0);
+  });
+});
+
 describe("createSquarePos", () => {
   function fakeClient() {
     const calls: { method: string; path: string; body: any }[] = [];
@@ -94,13 +123,26 @@ describe("createSquarePos", () => {
       async request<T>(method: string, path: string, body?: unknown) {
         calls.push({ method, path, body });
         if (path === "/v2/orders") return { order: { id: "SQ_ORDER", total_money: { amount: 1342, currency: "AUD" } } } as T;
+        if (path === "/v2/orders/calculate") return { order: calculated } as T;
         return { payment: { id: "SQ_PAY" } } as T;
       },
     };
     return { client, calls };
   }
 
-  it("creates the order, then records its payment for Square's total", async () => {
+  it("asks Square for the tax it adds to a cart, with the seller's taxes applied", async () => {
+    const { client, calls } = fakeClient();
+    const pos = createSquarePos(client, menu);
+    const lines = order([{ lineId: "l1", itemId: "latte", qty: 2, modifiers: { "latte-size": ["large"], milk: ["oat"] } }]).lines;
+
+    expect(await pos.quote!(lines)).toEqual({ tax: 90 });
+    expect(calls[0]).toMatchObject({
+      path: "/v2/orders/calculate",
+      body: { order: { location_id: "LOC1", line_items: [{ quantity: "2", catalog_object_id: "VAR_L" }], pricing_options: { auto_apply_taxes: true } } },
+    });
+  });
+
+  it("creates the order, then records what the customer paid", async () => {
     const { client, calls } = fakeClient();
     const pos = createSquarePos(client, menu);
     const placed = order([{ lineId: "l1", itemId: "latte", qty: 1, modifiers: { "latte-size": ["small"], milk: ["full-cream"] } }]);
@@ -109,14 +151,14 @@ describe("createSquarePos", () => {
     expect(ref).toEqual({ orderId: "SQ_ORDER", total: 1342, currency: "AUD" });
     expect(calls[0]).toMatchObject({ method: "POST", path: "/v2/orders", body: { idempotency_key: `order-${placed.id}` } });
 
-    expect(await pos.orderPaid!({ ...placed, pos: { name: "square", ...ref! } })).toEqual({ paymentId: "SQ_PAY" });
+    expect(await pos.orderPaid!({ ...placed, tax: 45, pos: { name: "square", ...ref! } })).toEqual({ paymentId: "SQ_PAY" });
     expect(calls[1]).toMatchObject({
       path: "/v2/payments",
       body: {
         idempotency_key: `pay-${placed.id}`,
         source_id: "EXTERNAL",
         external_details: { type: "OTHER", source: "Paid at kiosk (AI ordering)" },
-        amount_money: { amount: 1342, currency: "AUD" },
+        amount_money: { amount: 450 + 45, currency: "AUD" },
         order_id: "SQ_ORDER",
         location_id: "LOC1",
       },

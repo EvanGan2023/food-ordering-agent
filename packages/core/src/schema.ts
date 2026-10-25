@@ -61,6 +61,8 @@ export const Menu = z.object({
   name: z.string().min(1),
   currency: z.string().length(3),
   timezone: z.string().min(1),
+  /** Prices are before tax and the POS adds tax at checkout (e.g. US sales tax); false when prices include it. */
+  taxAddedAtCheckout: z.boolean().default(false),
   categories: z.array(Category),
   modifierGroups: z.array(ModifierGroup),
   items: z.array(MenuItem),

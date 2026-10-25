@@ -22,6 +22,7 @@ import {
   type MessageStreamEvent,
   type Order,
   type OrderStatus,
+  type PricedCart,
   type SessionView,
   type Settings,
 } from "@foa/core";
@@ -130,13 +131,34 @@ export function createApp(deps: AppDeps) {
     return { ...defaultSettings, ...(await store.getSettings()) };
   }
 
+  // Tax quotes from the POS, by cart contents, so screens refreshing the same cart don't ask again.
+  const taxQuotes = new Map<string, number>();
+  async function addedTax(cart: PricedCart): Promise<number> {
+    if (!pos.quote || !cart.lines.length) return 0;
+    const key = JSON.stringify(cart.lines.map((l) => [l.itemId, l.qty, l.modifiers]));
+    const known = taxQuotes.get(key);
+    if (known !== undefined) return known;
+    try {
+      const { tax } = await pos.quote(cart.lines);
+      if (taxQuotes.size >= 500) taxQuotes.clear();
+      taxQuotes.set(key, tax);
+      return tax;
+    } catch (err) {
+      // The POS still applies its taxes to the order; staff see any balance there.
+      console.error(`${pos.name}: tax quote failed:`, err);
+      return 0;
+    }
+  }
+
   async function view(session: SessionRecord): Promise<SessionView> {
     const questions = questionsFor((await settings()).questions, session.channel);
+    const cart = priceCart(session.state.cart, menu);
     return {
       id: session.id,
       channel: session.channel,
       status: session.status,
-      cart: priceCart(session.state.cart, menu),
+      cart,
+      tax: await addedTax(cart),
       answers: session.state.answers,
       questions,
       missingAnswers: unansweredRequired(questions, session.state.answers, session.channel).map((q) => q.id),
@@ -432,6 +454,7 @@ export function createApp(deps: AppDeps) {
         status: payment === "at_pickup" ? "awaiting_payment" : "paid",
         lines: checked.value.lines,
         subtotal: checked.value.subtotal,
+        tax: await addedTax(checked.value),
         currency: checked.value.currency,
         answers: questions
           .filter((q) => session.state.answers[q.id])

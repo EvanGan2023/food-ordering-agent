@@ -1,4 +1,4 @@
-import { formatPrice, type Order } from "@foa/core";
+import { formatPrice, orderTotal, type Order } from "@foa/core";
 import { statusLabel, type Size } from "./ui";
 
 interface Props {
@@ -57,9 +57,15 @@ export function OrderConfirmation({ order, size = "regular", children }: Props) 
             </li>
           ))}
         </ul>
+        {!!order.tax && (
+          <div className="docket-rule mt-4 flex items-baseline justify-between pt-3 text-left">
+            <span>Tax</span>
+            <span className="tabular-nums">{formatPrice(order.tax, order.currency)}</span>
+          </div>
+        )}
         <div className="docket-rule mt-4 flex items-baseline justify-between pt-3 text-left">
           <span className="font-bold">Total</span>
-          <span className="font-display text-2xl font-extrabold tabular-nums">{formatPrice(order.subtotal, order.currency)}</span>
+          <span className="font-display text-2xl font-extrabold tabular-nums">{formatPrice(orderTotal(order), order.currency)}</span>
         </div>
       </div>
       {children && <div className="mt-6 flex flex-col items-center gap-3">{children}</div>}

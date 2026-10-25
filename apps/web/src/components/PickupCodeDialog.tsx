@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatPrice, type Order } from "@foa/core";
+import { formatPrice, orderTotal, type Order } from "@foa/core";
 import { api, describeError, errorCode } from "@/lib/api";
 import { OrderConfirmation } from "./OrderConfirmation";
 import { buttonClass, statusLabel } from "./ui";
@@ -145,14 +145,20 @@ export function PickupCodeDialog({ onClose }: { onClose: () => void }) {
                 <span className="tabular-nums">{formatPrice(line.lineTotal, order.currency)}</span>
               </li>
             ))}
+            {!!order.tax && (
+              <li className="docket-rule flex justify-between pt-3">
+                <span>Tax</span>
+                <span className="tabular-nums">{formatPrice(order.tax, order.currency)}</span>
+              </li>
+            )}
             <li className="docket-rule flex justify-between pt-3 font-bold">
               <span>Total</span>
-              <span className="font-display text-2xl tabular-nums">{formatPrice(order.subtotal, order.currency)}</span>
+              <span className="font-display text-2xl tabular-nums">{formatPrice(orderTotal(order), order.currency)}</span>
             </li>
           </ul>
           {order.status === "awaiting_payment" ? (
             <button type="button" className={`${buttonClass("primary", "kiosk")} w-full`} disabled={busy} onClick={() => void pay()}>
-              Pay now (demo) {formatPrice(order.subtotal, order.currency)}
+              Pay now (demo) {formatPrice(orderTotal(order), order.currency)}
             </button>
           ) : (
             <p className="rounded-2xl bg-lettuce px-4 py-3 text-lg font-bold text-pickle">

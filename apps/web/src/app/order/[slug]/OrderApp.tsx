@@ -125,7 +125,7 @@ export function OrderApp({ slug, embed }: { slug: string; embed: boolean }) {
                   Your order · {count} item{count === 1 ? "" : "s"}
                 </span>
                 <span className="flex items-center gap-2 font-semibold tabular-nums">
-                  {formatPrice(cart.subtotal, cart.currency)}
+                  {formatPrice(cart.subtotal + session.tax, cart.currency)}
                   <span className="text-sm font-medium text-pickle">View</span>
                 </span>
               </button>

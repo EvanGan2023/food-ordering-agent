@@ -69,6 +69,8 @@ export interface SessionView {
   channel: Channel;
   status: "open" | "checked_out";
   cart: PricedCart;
+  /** Tax the POS adds on top of the cart's prices (0 when prices include tax); the customer pays subtotal + tax. */
+  tax: number;
   answers: Answers;
   /** Questions for this channel, in order, so the UI can show and answer them. */
   questions: OrderQuestion[];
@@ -121,6 +123,8 @@ export interface Order {
   status: OrderStatus;
   lines: PricedLine[];
   subtotal: number;
+  /** Tax added on top of the prices, from the POS. Missing on orders placed before tax was supported. */
+  tax?: number;
   currency: string;
   answers: OrderAnswer[];
   /** The order in the restaurant's POS (e.g. Square), once it has been sent there. */
@@ -128,6 +132,9 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
 }
+
+/** What the customer pays for an order: its subtotal plus any tax added on top. */
+export const orderTotal = (order: Pick<Order, "subtotal" | "tax">) => order.subtotal + (order.tax ?? 0);
 
 export interface PosRef {
   /** Which POS, e.g. "square". */

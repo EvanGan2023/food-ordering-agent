@@ -54,9 +54,10 @@ export function staticInstructions(opts: {
   const style = opts.style ?? defaultReplyStyle;
   const length = REPLY_WORDS[style.replyLength];
   const prices =
-    style.prices === "always"
+    (style.prices === "always"
       ? "Say each item's price when you list or confirm it, and give the total before paying."
-      : "Never say prices unless the customer asks what something costs, or when giving the total before paying.";
+      : "Never say prices unless the customer asks what something costs, or when giving the total before paying.") +
+    (opts.menu.taxAddedAtCheckout ? " Prices are before tax, which is added at checkout and shown on screen: say \"plus tax\" after any total." : "");
   const listing =
     style.prices === "always"
       ? 'When asked what you have, name the items briefly with their prices, dropping shared words ("Classic $6.50, Brown Sugar $7.50 or Taro $7.00"), then ask which one.'

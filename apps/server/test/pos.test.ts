@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { demoMenu, type Order, type SessionView } from "@foa/core";
+import { demoMenu, orderTotal, type Order, type SessionView } from "@foa/core";
 import { createApp } from "../src/app";
 import { migrate, openDb, type Db } from "../src/db";
 import type { PosAdapter } from "../src/pos";
@@ -9,9 +9,17 @@ let db: Db;
 let app: ReturnType<typeof createApp>;
 const steps: string[] = [];
 let failNext = false;
+let quotes = 0;
+let failQuote = false;
 
 const pos: PosAdapter = {
   name: "test-pos",
+  // 10% added on top, like a US sales tax.
+  async quote(lines) {
+    quotes++;
+    if (failQuote) throw new Error("POS is down");
+    return { tax: Math.round(lines.reduce((sum, l) => sum + l.lineTotal, 0) / 10) };
+  },
   async submitOrder(order) {
     steps.push(`submit #${order.number}`);
     if (failNext) {
@@ -77,5 +85,32 @@ describe("sending orders to the POS", () => {
     expect(order).toMatchObject({ status: "paid", pos: { name: "test-pos", error: "POS is down" } });
     expect(steps.at(-1)).toBe(`submit #${order.number}`); // no payment for an order the POS doesn't have
     expect((await call<Order[]>("GET", "/orders")).some((o) => o.id === order.id)).toBe(true);
+  });
+
+  it("shows the tax the POS adds, asks once per cart and keeps it on the order", async () => {
+    const session = await call<SessionView>("POST", "/sessions", { channel: "kiosk" });
+    expect(session.tax).toBe(0);
+    const before = quotes;
+    const added = await call<SessionView>("POST", `/sessions/${session.id}/cart/add`, { itemId: "cheeseburger" });
+    expect(added.tax).toBe(Math.round(added.cart.subtotal / 10));
+    await call<SessionView>("GET", `/sessions/${session.id}`);
+    expect(quotes - before).toBe(1);
+
+    await call("POST", `/sessions/${session.id}/answers`, { questionId: "name", value: "Sam" });
+    await call("POST", `/sessions/${session.id}/answers`, { questionId: "dine-in", value: "takeaway" });
+    const order = await call<Order>("POST", `/sessions/${session.id}/checkout`, { payment: "kiosk" });
+    expect(order).toMatchObject({ subtotal: added.cart.subtotal, tax: added.tax });
+    expect(orderTotal(order)).toBe(added.cart.subtotal + added.tax);
+  });
+
+  it("still takes the order when the POS can't price the tax", async () => {
+    failQuote = true;
+    try {
+      const session = await call<SessionView>("POST", "/sessions", { channel: "kiosk" });
+      const added = await call<SessionView>("POST", `/sessions/${session.id}/cart/add`, { itemId: "cheeseburger", qty: 3 });
+      expect(added.tax).toBe(0);
+    } finally {
+      failQuote = false;
+    }
   });
 });

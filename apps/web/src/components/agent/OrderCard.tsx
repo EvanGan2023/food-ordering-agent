@@ -51,7 +51,7 @@ export function OrderCard({
   const { cart } = session;
   const count = cart.lines.reduce((n, l) => n + l.qty, 0);
   const blocker = checkoutBlocker(session);
-  const total = formatPrice(cart.subtotal, cart.currency);
+  const total = formatPrice(cart.subtotal + session.tax, cart.currency);
   const fix = `rounded-full border-[1.5px] border-char/15 bg-card font-medium transition-colors hover:border-char disabled:opacity-45 ${
     kiosk ? "min-h-16 px-6 text-xl" : "min-h-11 px-4"
   }`;
@@ -174,7 +174,9 @@ export function OrderCard({
       <div className={`border-t border-[#efe7de] ${kiosk ? "mt-5 pt-6" : "mt-4 pt-4"}`}>
         <div className={kiosk ? "flex items-center gap-5" : "flex flex-col gap-3"}>
           <div className={kiosk ? "flex flex-col" : "flex items-baseline justify-between"} aria-live="polite">
-            <span className={`text-char-soft ${kiosk ? "text-xl" : "text-sm"}`}>Total</span>
+            <span className={`text-char-soft ${kiosk ? "text-xl" : "text-sm"}`}>
+              Total{session.tax > 0 && ` (incl. ${formatPrice(session.tax, cart.currency)} tax)`}
+            </span>
             <span className={`font-bold tracking-tight tabular-nums ${kiosk ? "text-4xl" : "text-2xl"}`}>{total}</span>
           </div>
           <div className={kiosk ? "flex min-w-0 flex-1 gap-2" : "grid grid-cols-2 gap-2"}>

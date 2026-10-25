@@ -1,4 +1,4 @@
-import { getGroup, getItem, type Menu, type Order, type PaymentMethod } from "@foa/core";
+import { getGroup, getItem, orderTotal, type Menu, type Order, type PaymentMethod, type PricedLine } from "@foa/core";
 import type { PosAdapter } from "../pos";
 import type { SquareClient } from "./client";
 
@@ -10,10 +10,13 @@ interface SquareLineItem {
   modifiers?: ({ catalog_object_id: string } | { name: string; base_price_money: { amount: number; currency: string } })[];
 }
 
-/** Our placed order as a Square order: catalog lines where the menu came from Square, named lines otherwise. */
-export function toSquareOrder(order: Order, menu: Menu, locationId: string) {
-  const money = (amount: number) => ({ amount, currency: order.currency });
-  const line_items = order.lines.map((line): SquareLineItem => {
+/** Square applies the seller's taxes (included in prices or added on top) to catalog items. */
+const pricingOptions = { auto_apply_taxes: true };
+
+/** Order lines for Square: catalog lines where the menu came from Square, named lines otherwise. */
+export function toSquareLineItems(lines: PricedLine[], menu: Menu, currency: string): SquareLineItem[] {
+  const money = (amount: number) => ({ amount, currency });
+  return lines.map((line): SquareLineItem => {
     const item = getItem(menu, line.itemId);
     let catalogId = item?.posId;
     const modifiers: NonNullable<SquareLineItem["modifiers"]> = [];
@@ -37,7 +40,10 @@ export function toSquareOrder(order: Order, menu: Menu, locationId: string) {
       ...(modifiers.length ? { modifiers } : {}),
     };
   });
+}
 
+/** Our placed order as a Square order. */
+export function toSquareOrder(order: Order, menu: Menu, locationId: string) {
   const answer = (id: string) => order.answers.find((a) => a.questionId === id)?.answer;
   const kitchenNotes = order.answers
     .filter((a) => a.sendToKitchen && a.questionId !== "name")
@@ -47,7 +53,8 @@ export function toSquareOrder(order: Order, menu: Menu, locationId: string) {
     location_id: locationId,
     reference_id: `#${order.number}`,
     source: { name: "AI ordering" },
-    line_items,
+    line_items: toSquareLineItems(order.lines, menu, order.currency),
+    pricing_options: pricingOptions,
     fulfillments: [
       {
         type: "PICKUP",
@@ -60,6 +67,22 @@ export function toSquareOrder(order: Order, menu: Menu, locationId: string) {
       },
     ],
   };
+}
+
+interface SquareCalculated {
+  order: {
+    taxes?: { uid?: string; type?: "ADDITIVE" | "INCLUSIVE" }[];
+    line_items?: { applied_taxes?: { tax_uid: string; applied_money?: { amount: number } }[] }[];
+  };
+}
+
+/** The tax Square adds on top of the prices; taxes included in the prices don't change what the customer pays. */
+export function addedTax(order: SquareCalculated["order"]): number {
+  const added = new Set(order.taxes?.filter((t) => t.type === "ADDITIVE").map((t) => t.uid));
+  return (order.line_items ?? [])
+    .flatMap((line) => line.applied_taxes ?? [])
+    .filter((t) => added.has(t.tax_uid))
+    .reduce((sum, t) => sum + (t.applied_money?.amount ?? 0), 0);
 }
 
 const PAID_AT: Record<PaymentMethod, string> = {
@@ -78,6 +101,13 @@ export function createSquarePos(client: SquareClient, menu: Menu): PosAdapter {
   return {
     name: "square",
 
+    async quote(lines) {
+      const { order } = await client.request<SquareCalculated>("POST", "/v2/orders/calculate", {
+        order: { location_id: locationId, line_items: toSquareLineItems(lines, menu, menu.currency), pricing_options: pricingOptions },
+      });
+      return { tax: addedTax(order) };
+    },
+
     async submitOrder(order) {
       const { order: created } = await client.request<{ order: { id: string; total_money?: { amount: number; currency: string } } }>(
         "POST",
@@ -93,7 +123,8 @@ export function createSquarePos(client: SquareClient, menu: Menu): PosAdapter {
         idempotency_key: `pay-${order.id}`,
         source_id: "EXTERNAL",
         external_details: { type: "OTHER", source: PAID_AT[order.payment] },
-        amount_money: { amount: order.pos.total ?? order.subtotal, currency: order.pos.currency ?? order.currency },
+        // What the customer was charged; if Square's total differs, staff see the balance there.
+        amount_money: { amount: orderTotal(order), currency: order.currency },
         order_id: order.pos.orderId,
         location_id: locationId,
       });

@@ -136,4 +136,9 @@ describe("staticInstructions", () => {
     expect(prompt).toContain("Say each item's price");
     expect(prompt).toContain("never change the rules above):\nGreet people with G'day.");
   });
+
+  it("says totals are plus tax only where tax is added at checkout", () => {
+    expect(staticInstructions(base)).not.toContain("plus tax");
+    expect(staticInstructions({ ...base, menu: { ...demoMenu, taxAddedAtCheckout: true } })).toContain('say "plus tax" after any total');
+  });
 });

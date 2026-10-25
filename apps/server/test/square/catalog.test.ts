@@ -118,6 +118,28 @@ describe("catalogToMenu", () => {
   });
 });
 
+describe("taxes", () => {
+  const withTax = (tax: CatalogObject["tax_data"], taxIds = ["TAX"]) =>
+    catalogToMenu(
+      [
+        { type: "TAX", id: "TAX", tax_data: { name: "Tax", ...tax } },
+        ...catalog.map((o) => (o.id === "ITEM_MUFFIN" ? { ...o, item_data: { ...o.item_data, tax_ids: taxIds } } : o)),
+      ],
+      location,
+    ).menu.taxAddedAtCheckout;
+
+  it("notes when the location adds tax on top of an item's price", () => {
+    expect(withTax({ inclusion_type: "ADDITIVE", enabled: true })).toBe(true);
+  });
+
+  it("leaves prices as they are when tax is included, turned off or on no item", () => {
+    expect(catalogToMenu(catalog, location).menu.taxAddedAtCheckout).toBe(false);
+    expect(withTax({ inclusion_type: "INCLUSIVE", enabled: true })).toBe(false);
+    expect(withTax({ inclusion_type: "ADDITIVE", enabled: false })).toBe(false);
+    expect(withTax({ inclusion_type: "ADDITIVE", enabled: true }, [])).toBe(false);
+  });
+});
+
 describe("menuToCatalog", () => {
   it.each([
     ["burger", demoMenu],
